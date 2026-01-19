@@ -36,6 +36,31 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import Countdown from "react-countdown";
+type PistonLang =
+  | "python"
+  | "typescript"
+  | "javascript"
+  | "c++"
+  | "java"
+  | "c#";
+
+const PISTON_TO_MONACO: Record<PistonLang, string> = {
+  python: "python",
+  typescript: "typescript",
+  javascript: "javascript",
+  "c++": "cpp",
+  java: "java",
+  "c#": "csharp",
+};
+
+const LABELS: Record<PistonLang, string> = {
+  python: "Python 3",
+  typescript: "TypeScript",
+  javascript: "JavaScript",
+  "c++": "C++ v10.2",
+  java: "Java v15",
+  "c#": "C#",
+};
 
 const Page = () => {
   const theme = useTheme();
@@ -43,7 +68,7 @@ const Page = () => {
   const supabase = createClient();
 
   const [code, setCode] = useState<string>("");
-  const [language, setLanguage] = useState("python");
+  const [language, setLanguage] = useState<string>("python");
   const [output, setOutput] = useState("");
   const [running, setRunning] = useState(false);
 
@@ -332,21 +357,21 @@ const Page = () => {
 
               <div className="flex gap-2">
                 <Select
-                  onValueChange={handleLanguageChange}
+                  onValueChange={(v) => handleLanguageChange(v as PistonLang)}
                   value={language}
                   disabled={roomClosed}
                 >
                   <SelectTrigger className="w-45 shadow-shadow hover:cursor-pointer">
                     <SelectValue placeholder="Select a Language" />
                   </SelectTrigger>
+
                   <SelectContent>
                     <SelectGroup>
-                      <SelectItem value="python">Python 3</SelectItem>
-                      <SelectItem value="typescript">TypeScript</SelectItem>
-                      <SelectItem value="javascript">JavaScript</SelectItem>
-                      <SelectItem value="c++">C++ v10.2</SelectItem>
-                      <SelectItem value="java">Java v15</SelectItem>
-                      <SelectItem value="c#">C#</SelectItem>
+                      {(Object.keys(LABELS) as PistonLang[]).map((lang) => (
+                        <SelectItem key={lang} value={lang}>
+                          {LABELS[lang]}
+                        </SelectItem>
+                      ))}
                     </SelectGroup>
                   </SelectContent>
                 </Select>
@@ -375,7 +400,7 @@ const Page = () => {
               theme={theme.theme === "dark" ? "vs-dark" : "light"}
               height="75vh"
               defaultLanguage="python"
-              language={language}
+              language={PISTON_TO_MONACO[language]}
               value={code}
               onChange={onEditorChange}
               options={{ readOnly: roomClosed }}
