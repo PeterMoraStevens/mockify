@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import Editor, { DiffEditor, useMonaco, loader } from "@monaco-editor/react";
 import {
   Card,
@@ -21,39 +21,60 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
+import { toast } from "sonner";
 
 const Page = () => {
   const theme = useTheme();
   const [code, setCode] = useState<string | undefined>();
   const [language, setLanguage] = useState("python");
   const [output, setOutput] = useState("");
+  const [running, setRunning] = useState(false);
+  const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleCodeExecution = async () => {
-    setOutput("Running...");
+const handleCodeExecution = async () => {
+  if (running) return;
 
-    try {
-      const res = await fetch("/api/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          language,
-          content: code ?? "",
-        }),
-      });
+  setRunning(true);
+  setOutput("Running...");
 
-      if (!res.ok) {
-        const text = await res.text();
-        setOutput(`Request failed (${res.status}): ${text}`);
-        return;
-      }
+  if (timeoutIdRef.current) {
+    clearTimeout(timeoutIdRef.current);
+  }
 
-      const data = await res.json();
+  timeoutIdRef.current = setTimeout(() => {
+    setRunning(false);
+    timeoutIdRef.current = null;
+  }, 2000);
 
-      setOutput(data.run.output)
-    } catch (e: any) {
-      setOutput(`Error: ${e?.message ?? "Unknown error"}`);
+  try {
+    const res = await fetch("/api/execute", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        language,
+        content: code ?? "",
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      setOutput(`Request failed (${res.status}): ${text}`);
+      return;
     }
-  };
+
+    const data = await res.json();
+
+    if (data.run.code === null) {
+      setOutput("Code timed out");
+    } else {
+      setOutput(data.run.output);
+    }
+  } catch (e: any) {
+    setOutput(`Error: ${e?.message ?? "Unknown error"}`);
+  }
+};
+
 
   return (
     <div className="grid grid-cols-10 max-h-screen">
@@ -78,9 +99,23 @@ const Page = () => {
                 </SelectContent>
               </Select>
 
-              <Button onClick={handleCodeExecution}>
-                Run <PlayIcon />
-              </Button>
+              <Button
+              onClick={handleCodeExecution}
+              disabled={running}
+            >
+              {running ? (
+                <>
+                  Running <Spinner />
+                </>
+              ) : (
+                <>
+                  Run <PlayIcon />
+                </>
+              )}
+            </Button>
+
+
+              
             </div>
           </div>
 
@@ -97,8 +132,8 @@ const Page = () => {
         </Card>
       </div>
       <div className="col-span-3">
-        <Card className="p-6 bg-main/80 m-2"></Card>
-        <Card className="max-h-screen overflow-scroll p-6 bg-main/80 m-2">
+        <Card className="h-[25vh] p-6 bg-main/80 m-2"></Card>
+        <Card className="h-[65vh] overflow-scroll p-6 bg-main/80 m-2">
           <CardTitle>Output</CardTitle>
           <CardContent>
             <pre className="whitespace-pre-wrap wrap-break-word">{output}</pre>
