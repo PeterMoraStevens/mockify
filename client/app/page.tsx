@@ -34,9 +34,12 @@ export default function Home() {
             Use our platform or even host your own!
           </div>
           <div className="flex items-center gap-2 justify-center p-4">
-            <Button>
-              Create Room <Plus />
-            </Button>
+            <Link href={"/create-room"}>
+              <Button>
+                Create Room <Plus />
+              </Button>
+            </Link>
+
             <Link href={"/join-room"}>
               <Button className="hover:cursor-pointer">
                 Join Room <UserPlus2Icon />
@@ -46,7 +49,7 @@ export default function Home() {
         </div>
         <Marquee
           items={[
-            "Dozens of Programming Languages Supported",
+            "Multiple of Programming Languages Supported",
             "|",
             "Live Video & Audio",
             "|",

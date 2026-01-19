@@ -3,13 +3,24 @@
 import React from "react";
 import { Button } from "./ui/button";
 import { ModeToggle } from "./theme-toggle";
-import { Plus, UserPlus2Icon } from "lucide-react";
+import {
+  CreditCard,
+  LogOut,
+  Plus,
+  Settings,
+  User,
+  UserPlus2Icon,
+} from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { useAuth } from "@/hooks/useAuth";
+import { CurrentUserAvatar } from "./current-user-avatar";
 
 const LandingNavbar = () => {
   const url = usePathname();
+  const { user, loading } = useAuth();
 
   return (
     <div className="sticky z-99 justify-between top-0 flex bg-secondary-background w-full min-h-8 border-b-4 border-black p-4">
@@ -29,10 +40,16 @@ const LandingNavbar = () => {
         </Link>
       </div>
       <div className="flex gap-4">
-        <Avatar>
-          <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
-          <AvatarFallback>CN</AvatarFallback>
-        </Avatar>
+        {user ? (
+          <CurrentUserAvatar />
+        ) : (
+          <Link href={"/auth/login"}>
+            <Button className={url.includes("login") ? "bg-amber-500" : ""}>
+              Login
+            </Button>
+          </Link>
+        )}
+
         <ModeToggle />
       </div>
     </div>
@@ -41,6 +58,7 @@ const LandingNavbar = () => {
 
 const RoomNavbar = () => {
   const url = usePathname();
+  const { user, loading } = useAuth();
 
   return (
     <div className="sticky z-99 justify-between top-0 flex bg-secondary-background w-full min-h-8 border-b-4 border-black p-4">
@@ -50,10 +68,7 @@ const RoomNavbar = () => {
         </Link>
       </div>
       <div className="flex gap-4">
-        <Avatar>
-          <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
-          <AvatarFallback>CN</AvatarFallback>
-        </Avatar>
+        <CurrentUserAvatar />
         <ModeToggle />
       </div>
     </div>
