@@ -70,7 +70,7 @@ const Page = () => {
   const supabase = createClient();
 
   const [code, setCode] = useState<string>("");
-  const [language, setLanguage] = useState<string>("python");
+  const [language, setLanguage] = useState<PistonLang>("python");
   const [output, setOutput] = useState("");
   const [running, setRunning] = useState(false);
   const [isHost, setIsHost] = useState(false);
@@ -83,6 +83,21 @@ const Page = () => {
   const channelRef = useRef<any | null>(null);
   const isApplyingRemoteRef = useRef(false);
   const { user, loading } = useAuth();
+
+  const PISTON_LANGS: readonly PistonLang[] = [
+    "python",
+    "typescript",
+    "javascript",
+    "c++",
+    "java",
+    "c#",
+  ] as const;
+
+  function isPistonLang(v: unknown): v is PistonLang {
+    return (
+      typeof v === "string" && (PISTON_LANGS as readonly string[]).includes(v)
+    );
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -126,7 +141,7 @@ const Page = () => {
 
       if (mounted && data) {
         if (typeof data.code === "string") setCode(data.code);
-        if (typeof data.language === "string") setLanguage(data.language);
+        if (isPistonLang(data.language)) setLanguage(data.language);
         if (typeof data.output === "string") setOutput(data.output);
       }
     })();
@@ -279,7 +294,7 @@ const Page = () => {
     scheduleSave(newValue);
   };
 
-  const handleLanguageChange = async (newLang: string) => {
+  const handleLanguageChange = async (newLang: PistonLang) => {
     setLanguage(newLang);
     if (!roomUuid || roomClosed) return; // avoid changes if closed
 
