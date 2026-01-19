@@ -17,7 +17,6 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { redirect, useParams } from "next/navigation";
 import {
   Card,
   CardAction,
@@ -36,6 +35,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import Countdown from "react-countdown";
+import { useParams, useRouter, redirect } from "next/navigation";
+
 type PistonLang =
   | "python"
   | "typescript"
@@ -63,6 +64,7 @@ const LABELS: Record<PistonLang, string> = {
 };
 
 const Page = () => {
+  const router = useRouter();
   const theme = useTheme();
   const { roomId } = useParams(); // room code (e.g., "ABC123")
   const supabase = createClient();
@@ -71,10 +73,11 @@ const Page = () => {
   const [language, setLanguage] = useState<string>("python");
   const [output, setOutput] = useState("");
   const [running, setRunning] = useState(false);
-
+  const [isHost, setIsHost] = useState(false);
   const [roomUuid, setRoomUuid] = useState<string>("");
   const [roomClosed, setRoomClosed] = useState<boolean>(false);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [roomCreatedBy, setRoomCreatedBy] = useState<string | null>(null);
 
   const typingTimeoutRef = useRef<number | null>(null);
   const channelRef = useRef<any | null>(null);
@@ -88,19 +91,21 @@ const Page = () => {
 
       const { data: roomRow, error: roomErr } = await supabase
         .from("rooms")
-        .select("id, closed, expires_at")
+        .select("id, closed, expires_at, created_by")
         .eq("code", (roomId as string).toUpperCase())
         .single();
 
       if (roomErr || !roomRow?.id) {
         console.error("fetch rooms error", roomErr);
         toast.error("Room not found or not accessible");
-        redirect("/");
+        router.replace("/");
+        return;
       }
 
       const fetchedRoomUuid = roomRow.id as string;
       setRoomUuid(fetchedRoomUuid);
       setExpiresAt(roomRow.expires_at ?? null);
+      setRoomCreatedBy(roomRow.created_by ?? null);
       if (roomRow.closed === true) {
         setRoomClosed(true);
         setOutput("Room is closed.");
@@ -131,6 +136,11 @@ const Page = () => {
     };
   }, [roomId, supabase]);
 
+  useEffect(() => {
+    if (!user?.id || !roomCreatedBy) return;
+    setIsHost(user.id === roomCreatedBy);
+  }, [user?.id, roomCreatedBy]);
+
   // Subscribe to realtime broadcasts for this roomUuid (UUID topic)
   useEffect(() => {
     if (!roomUuid) return;
@@ -153,6 +163,7 @@ const Page = () => {
           null;
         const remoteLang =
           maybeNew?.language ?? maybeNew?.payload?.language ?? null;
+        const remoteOutput = maybeNew?.output ?? "";
 
         if (remoteCode != null) {
           isApplyingRemoteRef.current = true;
@@ -164,30 +175,8 @@ const Page = () => {
           setLanguage(remoteLang);
         }
 
-        // NEW: handle room_closed broadcast specifically
-        // The cron function sends via realtime.send(topic, 'room_closed', { room_id }, true);
-        // Supabase broadcast payload shape usually puts the event name as payload?.event or top-level event
-        const eventName = payload?.event ?? body?.event ?? null;
-        const evt = (eventName || payload?.type || null)?.toString();
-
-        if (evt === "room_closed" || body?.event === "room_closed") {
-          // Mark UI as closed and show output + toast
-          setRoomClosed(true);
-          const closedMsg =
-            body?.payload?.room_id ??
-            maybeNew?.room_id ??
-            `Room ${roomUuid} was closed`;
-          const message = `Room closed by scheduler (${closedMsg})`;
-          setOutput(message);
-          toast.info(`Room closed by scheduler`);
-        }
-
-        // Some broadcasts may include payload directly as { event, payload }, handle that too
-        if (body?.event === "room_closed" && body?.payload) {
-          setRoomClosed(true);
-          const message = `Room closed by scheduler (${body.payload.room_id})`;
-          setOutput(message);
-          toast.info(message);
+        if (remoteOutput !== "") {
+          setOutput(remoteOutput);
         }
       } catch (e) {
         console.error("Error applying realtime payload", e);
@@ -204,13 +193,58 @@ const Page = () => {
 
     channelRef.current = channel;
 
+    channel.on("broadcast", { event: "room_closed" }, async () => {
+      setRoomClosed(true);
+      setOutput("Room was closed by the host.");
+      toast.info("Room closed by host");
+
+      try {
+        await channel.unsubscribe();
+      } catch {}
+
+      router.replace("/");
+    });
+
     return () => {
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
     };
-  }, [roomUuid, supabase]);
+  }, [roomUuid, router, supabase]);
+
+  useEffect(() => {
+    if (roomClosed) {
+      router.replace("/");
+    }
+  }, [roomClosed, router]);
+
+  const handleCloseRoomClick = async () => {
+    if (!roomUuid) return;
+
+    try {
+      const res = await fetch("/api/rooms/close", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId: roomUuid }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        toast.error(`Failed to close room: ${text}`);
+        return;
+      }
+
+      // Host UX: you can either stay, or also redirect out.
+      setRoomClosed(true);
+      setOutput("You closed the room.");
+      toast.success("Room closed");
+
+      setTimeout(() => router.replace("/"), 700);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to close room");
+    }
+  };
 
   // Debounced save to DB when local code changes
   const scheduleSave = (newContent: string) => {
@@ -269,6 +303,35 @@ const Page = () => {
         type: "broadcast",
         event: "language_update",
         payload: { language: newLang },
+      });
+    } catch (e) {
+      console.warn("Broadcast language failed:", e);
+    }
+  };
+
+  const handleOutputChange = async (newOutput: string) => {
+    if (!roomUuid || roomClosed) return;
+
+    const { error } = await supabase.from("room_state").upsert(
+      {
+        room_id: roomUuid,
+        output: newOutput,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "room_id" },
+    );
+
+    if (error) {
+      console.error("Failed to save language:", error);
+      toast.error("Failed to save language");
+    }
+
+    // Optional: broadcast immediately
+    try {
+      channelRef.current?.send({
+        type: "broadcast",
+        event: "language_update",
+        payload: { output: newOutput },
       });
     } catch (e) {
       console.warn("Broadcast language failed:", e);
@@ -335,6 +398,7 @@ const Page = () => {
       } else {
         setOutput(data.run.output);
       }
+      handleOutputChange(data.run.output);
     } catch (e: any) {
       setOutput(`Error: ${e?.message ?? "Unknown error"}`);
     } finally {
@@ -344,7 +408,7 @@ const Page = () => {
 
   const handleRoomClose = () => {
     toast.info("Room expired");
-    redirect("/");
+    router.replace("/");
   };
 
   return (
@@ -409,8 +473,12 @@ const Page = () => {
         </Card>
       </div>
 
-      <div className="col-span-3">
-        <Card className="h-[25vh] p-6 bg-main/80 m-2">
+      <div className="col-span-3 h-[75vh]">
+        <Card className="p-6 bg-main/80 m-2">
+          <RealtimeCursors
+            roomName={roomUuid}
+            username={user?.user_metadata.fullname}
+          />
           {expiresAt ? (
             <Countdown
               date={new Date(expiresAt)}
@@ -434,6 +502,12 @@ const Page = () => {
           )}
 
           <RealtimeAvatarStack roomName={roomUuid} />
+          {isHost && (
+            <Button variant="neutral" onClick={handleCloseRoomClick}>
+              Close room
+            </Button>
+          )}
+
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -446,7 +520,7 @@ const Page = () => {
           </TooltipProvider>
         </Card>
 
-        <Card className="h-[60vh] overflow-scroll p-6 bg-main/80 m-2">
+        <Card className="overflow-scroll p-6 bg-main/80 m-2 max-h-[55vh]">
           <CardTitle className="text-base font-medium">Output</CardTitle>
           <CardContent className="p-0 pt-4">
             <pre className="whitespace-pre-wrap wrap-break-word">{output}</pre>
