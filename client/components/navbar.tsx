@@ -58,7 +58,6 @@ const LandingNavbar = () => {
 
 const RoomNavbar = () => {
   const url = usePathname();
-  const { user, loading } = useAuth();
 
   return (
     <div className="sticky z-99 justify-between top-0 flex bg-secondary-background w-full min-h-8 border-b-4 border-black p-4">
@@ -68,7 +67,10 @@ const RoomNavbar = () => {
         </Link>
       </div>
       <div className="flex gap-4">
-        <CurrentUserAvatar />
+        <Avatar>
+          <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
+          <AvatarFallback>CN</AvatarFallback>
+        </Avatar>
         <ModeToggle />
       </div>
     </div>
