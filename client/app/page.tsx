@@ -27,9 +27,8 @@ export default function Home() {
             </Highlighter>{" "}
             mock interview platform with{" "}
             <Highlighter action="box" color="#FF9800">
-              minimal complexity
+              minimal complexity.
             </Highlighter>
-            .
           </div>
           <div className="text-center text-2xl pt-2">
             Use our platform or even host your own!
