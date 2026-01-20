@@ -476,7 +476,7 @@ const Page = () => {
           <CardContent className="p-0">
             <Editor
               className="shadow-shadow"
-              theme={theme.theme === "dark" ? "vs-dark" : "light"}
+              theme={theme.theme === "light" ? "light" : "vs-dark"}
               height="75vh"
               defaultLanguage="python"
               language={PISTON_TO_MONACO[language]}
