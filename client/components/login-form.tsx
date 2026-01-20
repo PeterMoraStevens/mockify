@@ -29,7 +29,7 @@ export function LoginForm({
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "github",
         options: {
-          redirectTo: `/`,
+          redirectTo: `${window.location.origin}/auth/oauth?next=/`,
         },
       });
 
