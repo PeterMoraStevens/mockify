@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
-import Editor from "@monaco-editor/react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import Editor, { type OnMount } from "@monaco-editor/react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
-import { Copy, PlayIcon } from "lucide-react";
+import { PlayIcon } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -17,15 +17,9 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RealtimeCursors } from "@/components/realtime-cursors";
+import { RemoteCursorStyles } from "@/components/remote-cursors";
 import { useAuth } from "@/hooks/useAuth";
 import { RealtimeAvatarStack } from "@/components/realtime-avatar-stack";
 import {
@@ -35,7 +29,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import Countdown from "react-countdown";
-import { useParams, useRouter, redirect } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { useYjsEditor } from "@/hooks/use-yjs-editor";
+import { MonacoBinding } from "y-monaco";
+import { useCurrentUserName } from "@/hooks/use-current-user-name";
+import { VideoChat } from "@/components/video-chat";
 
 type PistonLang =
   | "python"
@@ -63,13 +61,27 @@ const LABELS: Record<PistonLang, string> = {
   "c#": "C#",
 };
 
+const PISTON_LANGS: readonly PistonLang[] = [
+  "python",
+  "typescript",
+  "javascript",
+  "c++",
+  "java",
+  "c#",
+] as const;
+
+function isPistonLang(v: unknown): v is PistonLang {
+  return (
+    typeof v === "string" && (PISTON_LANGS as readonly string[]).includes(v)
+  );
+}
+
 const Page = () => {
   const router = useRouter();
   const theme = useTheme();
   const { roomId } = useParams(); // room code (e.g., "ABC123")
   const supabase = createClient();
 
-  const [code, setCode] = useState<string>("");
   const [language, setLanguage] = useState<PistonLang>("python");
   const [output, setOutput] = useState("");
   const [running, setRunning] = useState(false);
@@ -78,27 +90,21 @@ const Page = () => {
   const [roomClosed, setRoomClosed] = useState<boolean>(false);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [roomCreatedBy, setRoomCreatedBy] = useState<string | null>(null);
+  const [initialCode, setInitialCode] = useState<string | null>(null);
 
-  const typingTimeoutRef = useRef<number | null>(null);
   const channelRef = useRef<any | null>(null);
-  const isApplyingRemoteRef = useRef(false);
-  const { user, loading } = useAuth();
+  const editorRef = useRef<any | null>(null);
+  const bindingRef = useRef<MonacoBinding | null>(null);
+  const persistTimerRef = useRef<number | null>(null);
+  const { user } = useAuth();
 
-  const PISTON_LANGS: readonly PistonLang[] = [
-    "python",
-    "typescript",
-    "javascript",
-    "c++",
-    "java",
-    "c#",
-  ] as const;
+  // Yjs collaborative editing
+  const { provider } = useYjsEditor({
+    roomUuid,
+    username: useCurrentUserName(),
+  });
 
-  function isPistonLang(v: unknown): v is PistonLang {
-    return (
-      typeof v === "string" && (PISTON_LANGS as readonly string[]).includes(v)
-    );
-  }
-
+  // Fetch room data on mount
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -124,9 +130,19 @@ const Page = () => {
       if (roomRow.closed === true) {
         setRoomClosed(true);
         setOutput("Room is closed.");
+        localStorage.removeItem("mockify_active_room");
+      } else {
+        // Save active room for rejoin functionality
+        localStorage.setItem(
+          "mockify_active_room",
+          JSON.stringify({
+            code: (roomId as string).toUpperCase(),
+            expiresAt: roomRow.expires_at,
+          }),
+        );
       }
 
-      // Fetch room_state by room_uuid
+      // Fetch room_state to get initial code, language, output
       const { data, error } = await supabase
         .from("room_state")
         .select("code, updated_at, language, output")
@@ -140,7 +156,7 @@ const Page = () => {
       }
 
       if (mounted && data) {
-        if (typeof data.code === "string") setCode(data.code);
+        if (typeof data.code === "string") setInitialCode(data.code);
         if (isPistonLang(data.language)) setLanguage(data.language);
         if (typeof data.output === "string") setOutput(data.output);
       }
@@ -149,53 +165,105 @@ const Page = () => {
     return () => {
       mounted = false;
     };
-  }, [roomId, supabase]);
+  }, [roomId, router, supabase]);
 
   useEffect(() => {
     if (!user?.id || !roomCreatedBy) return;
     setIsHost(user.id === roomCreatedBy);
   }, [user?.id, roomCreatedBy]);
 
-  // Subscribe to realtime broadcasts for this roomUuid (UUID topic)
+  // Bind Yjs to Monaco editor when both are ready
+  useEffect(() => {
+    if (!provider || !editorRef.current) return;
+
+    const editor = editorRef.current;
+    const model = editor.getModel();
+    if (!model) return;
+
+    const ytext = provider.doc.getText("monaco");
+
+    // If the Yjs doc is empty and we have initial code from DB, seed it
+    if (ytext.length === 0 && initialCode) {
+      ytext.insert(0, initialCode);
+    }
+
+    const binding = new MonacoBinding(
+      ytext,
+      model,
+      new Set([editor]),
+      provider.awareness,
+    );
+
+    bindingRef.current = binding;
+
+    return () => {
+      binding.destroy();
+      bindingRef.current = null;
+    };
+  }, [provider, initialCode]);
+
+  // Periodic DB persistence for crash recovery (every 5s)
+  useEffect(() => {
+    if (!roomUuid || !provider || roomClosed) return;
+
+    persistTimerRef.current = window.setInterval(async () => {
+      const ytext = provider.doc.getText("monaco");
+      const code = ytext.toString();
+
+      await supabase.from("room_state").upsert(
+        {
+          room_id: roomUuid,
+          code,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "room_id" },
+      );
+    }, 5000);
+
+    return () => {
+      if (persistTimerRef.current) {
+        window.clearInterval(persistTimerRef.current);
+        persistTimerRef.current = null;
+      }
+    };
+  }, [roomUuid, provider, roomClosed, supabase]);
+
+  // Subscribe to language/output broadcasts and room_closed events
   useEffect(() => {
     if (!roomUuid) return;
 
     const topic = `room:${roomUuid}`;
     const channel = supabase.channel(topic, {
-      config: { broadcast: { self: true }, private: true },
+      config: { broadcast: { self: false }, private: true },
     });
 
-    channel.on("broadcast", { event: "*" }, (payload) => {
+    channel.on("broadcast", { event: "language_update" }, (payload) => {
       try {
-        const body = payload?.payload ?? payload;
-        const maybeNew = body?.new ?? body?.record ?? body;
+        const remoteLang = payload?.payload?.language;
+        const remoteOutput = payload?.payload?.output;
 
-        // Handle code/language updates (existing logic)
-        const remoteCode =
-          maybeNew?.code ??
-          maybeNew?.content ??
-          maybeNew?.payload?.code ??
-          null;
-        const remoteLang =
-          maybeNew?.language ?? maybeNew?.payload?.language ?? null;
-        const remoteOutput = maybeNew?.output ?? "";
-
-        if (remoteCode != null) {
-          isApplyingRemoteRef.current = true;
-          setCode(remoteCode);
-          isApplyingRemoteRef.current = false;
-        }
-
-        if (remoteLang != null) {
+        if (remoteLang != null && isPistonLang(remoteLang)) {
           setLanguage(remoteLang);
         }
-
-        if (remoteOutput !== "") {
+        if (remoteOutput != null) {
           setOutput(remoteOutput);
         }
       } catch (e) {
         console.error("Error applying realtime payload", e);
       }
+    });
+
+    channel.on("broadcast", { event: "room_closed" }, async () => {
+      setRoomClosed(true);
+      setOutput("Room was closed by the host.");
+      toast.info("Room closed by host");
+      localStorage.removeItem("mockify_active_room");
+
+      try {
+        await channel.unsubscribe();
+      } catch {}
+
+      router.replace("/");
     });
 
     channel.subscribe((status) => {
@@ -207,18 +275,6 @@ const Page = () => {
     });
 
     channelRef.current = channel;
-
-    channel.on("broadcast", { event: "room_closed" }, async () => {
-      setRoomClosed(true);
-      setOutput("Room was closed by the host.");
-      toast.info("Room closed by host");
-
-      try {
-        await channel.unsubscribe();
-      } catch {}
-
-      router.replace("/");
-    });
 
     return () => {
       if (channelRef.current) {
@@ -233,6 +289,10 @@ const Page = () => {
       router.replace("/");
     }
   }, [roomClosed, router]);
+
+  const handleEditorMount: OnMount = useCallback((editor) => {
+    editorRef.current = editor;
+  }, []);
 
   const handleCloseRoomClick = async () => {
     if (!roomUuid) return;
@@ -250,10 +310,10 @@ const Page = () => {
         return;
       }
 
-      // Host UX: you can either stay, or also redirect out.
       setRoomClosed(true);
       setOutput("You closed the room.");
       toast.success("Room closed");
+      localStorage.removeItem("mockify_active_room");
 
       setTimeout(() => router.replace("/"), 700);
     } catch (e: any) {
@@ -261,42 +321,9 @@ const Page = () => {
     }
   };
 
-  // Debounced save to DB when local code changes
-  const scheduleSave = (newContent: string) => {
-    if (isApplyingRemoteRef.current) return;
-    if (!roomUuid) return;
-    if (roomClosed) return; // NEW: don't save if room is closed
-
-    if (typingTimeoutRef.current) window.clearTimeout(typingTimeoutRef.current);
-
-    typingTimeoutRef.current = window.setTimeout(async () => {
-      const payload = {
-        room_id: roomUuid,
-        code: newContent,
-        updated_at: new Date().toISOString(),
-      };
-
-      const { error } = await supabase
-        .from("room_state")
-        .upsert(payload, { onConflict: "room_id" });
-
-      if (error) {
-        console.error("Failed to save room_state:", error);
-        toast.error("Failed to save edits");
-      }
-      typingTimeoutRef.current = null;
-    }, 700);
-  };
-
-  const onEditorChange = (value?: string) => {
-    const newValue = value ?? "";
-    setCode(newValue);
-    scheduleSave(newValue);
-  };
-
   const handleLanguageChange = async (newLang: PistonLang) => {
     setLanguage(newLang);
-    if (!roomUuid || roomClosed) return; // avoid changes if closed
+    if (!roomUuid || roomClosed) return;
 
     const { error } = await supabase.from("room_state").upsert(
       {
@@ -312,7 +339,6 @@ const Page = () => {
       toast.error("Failed to save language");
     }
 
-    // Optional: broadcast immediately
     try {
       channelRef.current?.send({
         type: "broadcast",
@@ -337,11 +363,10 @@ const Page = () => {
     );
 
     if (error) {
-      console.error("Failed to save language:", error);
-      toast.error("Failed to save language");
+      console.error("Failed to save output:", error);
+      toast.error("Failed to save output");
     }
 
-    // Optional: broadcast immediately
     try {
       channelRef.current?.send({
         type: "broadcast",
@@ -349,7 +374,7 @@ const Page = () => {
         payload: { output: newOutput },
       });
     } catch (e) {
-      console.warn("Broadcast language failed:", e);
+      console.warn("Broadcast output failed:", e);
     }
   };
 
@@ -364,7 +389,6 @@ const Page = () => {
       await navigator.clipboard.writeText(text);
       toast.success(`Copied ${text} to clipboard`);
     } catch {
-      // Fallback for older browsers / insecure contexts
       try {
         const ta = document.createElement("textarea");
         ta.value = text;
@@ -389,13 +413,18 @@ const Page = () => {
     setRunning(true);
     setOutput("Running...");
 
+    // Get current code from the Yjs document
+    const currentCode = provider
+      ? provider.doc.getText("monaco").toString()
+      : "";
+
     try {
       const res = await fetch("/api/execute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           language,
-          content: code ?? "",
+          content: currentCode,
         }),
       });
 
@@ -423,11 +452,13 @@ const Page = () => {
 
   const handleRoomClose = () => {
     toast.info("Room expired");
+    localStorage.removeItem("mockify_active_room");
     router.replace("/");
   };
 
   return (
     <div className="grid grid-cols-10 max-h-screen">
+      <RemoteCursorStyles awareness={provider?.awareness ?? null} />
       <div className="col-span-7">
         <Card className="p-6 bg-main/80 m-2">
           <CardHeader className="p-0 pb-4">
@@ -480,20 +511,15 @@ const Page = () => {
               height="75vh"
               defaultLanguage="python"
               language={PISTON_TO_MONACO[language]}
-              value={code}
-              onChange={onEditorChange}
+              onMount={handleEditorMount}
               options={{ readOnly: roomClosed }}
             />
           </CardContent>
         </Card>
       </div>
 
-      <div className="col-span-3 h-[75vh]">
+      <div className="col-span-3 overflow-y-auto max-h-screen">
         <Card className="p-6 bg-main/80 m-2">
-          <RealtimeCursors
-            roomName={roomUuid}
-            username={user?.user_metadata.fullname}
-          />
           {expiresAt ? (
             <Countdown
               date={new Date(expiresAt)}
@@ -534,6 +560,11 @@ const Page = () => {
             </Tooltip>
           </TooltipProvider>
         </Card>
+
+        <VideoChat
+          roomUuid={roomUuid}
+          username={user?.user_metadata?.fullname || "Anonymous"}
+        />
 
         <Card className="overflow-scroll p-6 bg-main/80 m-2 max-h-[55vh]">
           <CardTitle className="text-base font-medium">Output</CardTitle>

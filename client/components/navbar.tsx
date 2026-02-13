@@ -1,26 +1,43 @@
 "use client";
 
-import React from "react";
+import { useSyncExternalStore } from "react";
 import { Button } from "./ui/button";
 import { ModeToggle } from "./theme-toggle";
-import {
-  CreditCard,
-  LogOut,
-  Plus,
-  Settings,
-  User,
-  UserPlus2Icon,
-} from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { Plus, UserPlus2Icon, DoorOpen } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { SupabaseClient } from "@supabase/supabase-js";
 import { useAuth } from "@/hooks/useAuth";
 import { CurrentUserAvatar } from "./current-user-avatar";
 
+function getActiveRoomCode(): string | null {
+  try {
+    const raw = localStorage.getItem("mockify_active_room");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed.expiresAt && new Date(parsed.expiresAt) > new Date()) {
+      return parsed.code;
+    }
+    localStorage.removeItem("mockify_active_room");
+    return null;
+  } catch {
+    localStorage.removeItem("mockify_active_room");
+    return null;
+  }
+}
+
+const subscribe = (cb: () => void) => {
+  window.addEventListener("storage", cb);
+  return () => window.removeEventListener("storage", cb);
+};
+
+function useActiveRoom() {
+  return useSyncExternalStore(subscribe, getActiveRoomCode, () => null);
+}
+
 const LandingNavbar = () => {
   const url = usePathname();
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
+  const activeRoom = useActiveRoom();
 
   return (
     <div className="sticky z-99 justify-between top-0 flex bg-secondary-background w-full min-h-8 border-b-4 border-black p-4">
@@ -29,7 +46,9 @@ const LandingNavbar = () => {
           <Button className={url === "/" ? "bg-amber-500" : ""}>Home</Button>
         </Link>
         <Link href={"/create-room"}>
-          <Button className={url.includes("create-room") ? "bg-amber-500" : ""}>
+          <Button
+            className={url.includes("create-room") ? "bg-amber-500" : ""}
+          >
             Create Room <Plus />
           </Button>
         </Link>
@@ -38,6 +57,13 @@ const LandingNavbar = () => {
             Join Room <UserPlus2Icon />
           </Button>
         </Link>
+        {activeRoom && (
+          <Link href={`/room/${activeRoom}`}>
+            <Button className="bg-green-500 hover:bg-green-600">
+              Rejoin Room <DoorOpen />
+            </Button>
+          </Link>
+        )}
       </div>
       <div className="flex gap-4">
         {user ? (
