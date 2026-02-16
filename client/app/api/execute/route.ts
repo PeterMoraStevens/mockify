@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     if (!language || !content) {
       return NextResponse.json(
         { error: "Missing language or content" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     if (!mapping) {
       return NextResponse.json(
         { error: `Unsupported language: ${language}` },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
     const pistonRes = await fetch("https://emkc.org/api/v2/piston/execute", {
       method: "POST",
       headers: {
+        Authorization: `${process.env.PISTON_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(pistonPayload),
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
       console.error("Piston API error:", pistonRes.status, errorText);
       return NextResponse.json(
         { error: `Piston API error: ${errorText}` },
-        { status: pistonRes.status }
+        { status: pistonRes.status },
       );
     }
 
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
       console.error("Unexpected Piston response:", result);
       return NextResponse.json(
         { error: result.message || "Unexpected response from code runner" },
-        { status: 502 }
+        { status: 502 },
       );
     }
 
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
     console.error(error);
     return NextResponse.json(
       { error: "Failed to execute code" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
