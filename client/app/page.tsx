@@ -31,7 +31,7 @@ export default function Home() {
             </Highlighter>
           </div>
           <div className="text-center text-2xl pt-2">
-            Use our platform or even host your own!
+            Request a mock interview!
           </div>
           <div className="flex items-center gap-2 justify-center p-4">
             <Link href={"/create-room"}>
@@ -55,6 +55,8 @@ export default function Home() {
             "|",
             "Shared IDE & Real Time Updates",
             "|",
+            "For Oregon State University students",
+            "|"
           ]}
         />
       </div>
