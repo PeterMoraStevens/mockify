@@ -41,19 +41,6 @@ export const CurrentUserAvatar = () => {
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56 z-100">
-        <DropdownMenuLabel>My Account</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuItem>
-            <User />
-            <span>Profile</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <CreditCard />
-            <span>Billing</span>
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
         <DropdownMenuItem>
           <LogOut />
           <span onClick={handleLogout}>Log out</span>

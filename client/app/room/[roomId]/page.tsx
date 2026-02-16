@@ -450,12 +450,17 @@ const Page = () => {
 
       const data = await res.json();
 
-      if (data.run?.code === null) {
+      if (!data.run) {
+        const msg = data.message || data.error || "Execution failed";
+        setOutput(msg);
+        handleOutputChange(msg);
+      } else if (data.run.code === null) {
         setOutput("Code timed out");
+        handleOutputChange("Code timed out");
       } else {
         setOutput(data.run.output);
+        handleOutputChange(data.run.output);
       }
-      handleOutputChange(data.run.output);
     } catch (e: any) {
       setOutput(`Error: ${e?.message ?? "Unknown error"}`);
     } finally {
