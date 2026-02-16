@@ -180,25 +180,38 @@ const Page = () => {
     const model = editor.getModel();
     if (!model) return;
 
-    const ytext = provider.doc.getText("monaco");
+    let cancelled = false;
 
-    // If the Yjs doc is empty and we have initial code from DB, seed it
-    if (ytext.length === 0 && initialCode) {
-      ytext.insert(0, initialCode);
-    }
+    const bind = async () => {
+      // Wait for sync with existing peers (or timeout if we're the first)
+      await provider.whenSynced;
+      if (cancelled) return;
 
-    const binding = new MonacoBinding(
-      ytext,
-      model,
-      new Set([editor]),
-      provider.awareness,
-    );
+      const ytext = provider.doc.getText("monaco");
 
-    bindingRef.current = binding;
+      // Only seed from DB if Yjs doc is still empty after sync
+      if (ytext.length === 0 && initialCode) {
+        ytext.insert(0, initialCode);
+      }
+
+      const binding = new MonacoBinding(
+        ytext,
+        model,
+        new Set([editor]),
+        provider.awareness,
+      );
+
+      bindingRef.current = binding;
+    };
+
+    bind();
 
     return () => {
-      binding.destroy();
-      bindingRef.current = null;
+      cancelled = true;
+      if (bindingRef.current) {
+        bindingRef.current.destroy();
+        bindingRef.current = null;
+      }
     };
   }, [provider, initialCode]);
 

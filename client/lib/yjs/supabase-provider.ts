@@ -34,11 +34,18 @@ export class SupabaseProvider {
   private channel: RealtimeChannel;
   private synced = false;
   private destroyed = false;
+  private syncResolve: (() => void) | null = null;
+  readonly whenSynced: Promise<void>;
 
   constructor(channel: RealtimeChannel, doc: Y.Doc) {
     this.doc = doc;
     this.channel = channel;
     this.awareness = new Awareness(doc);
+
+    // Promise that resolves once we've synced with a peer or timed out
+    this.whenSynced = new Promise<void>((resolve) => {
+      this.syncResolve = resolve;
+    });
 
     this.setupDocListener();
     this.setupAwarenessListener();
@@ -118,7 +125,10 @@ export class SupabaseProvider {
       if (this.destroyed) return;
       const state = fromBase64(msg.payload.data);
       Y.applyUpdate(this.doc, state, this);
-      this.synced = true;
+      if (!this.synced) {
+        this.synced = true;
+        this.syncResolve?.();
+      }
     });
   }
 
@@ -131,6 +141,14 @@ export class SupabaseProvider {
         event: EVENTS.SYNC_REQUEST,
         payload: {},
       });
+
+      // If no peer responds within 1.5s, resolve anyway (we're the first peer)
+      setTimeout(() => {
+        if (!this.synced && !this.destroyed) {
+          this.synced = true;
+          this.syncResolve?.();
+        }
+      }, 1500);
     }, 500);
   }
 
