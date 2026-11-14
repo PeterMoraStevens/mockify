@@ -1,0 +1,73 @@
+# Mockify on Coolify (compute-node).
+#
+# In Coolify: Build Pack = Docker Compose, Base Directory = /,
+# Docker Compose Location = /docker-compose.coolify.yml
+#   - Give the `app` service the domain http://mockify.petermorastevens.rocks:3000
+#   - Leave `peerjs` without a domain (its routing is in the labels below)
+#   - Settings > enable "Connect To Predefined Network" (needed to reach Piston)
+#
+# Traffic: Cloudflare tunnel -> compute-node Traefik :80
+#   /peerjs/*  -> peerjs:9000 (path kept, PeerServer mounts at /peerjs)
+#   everything else -> app:3000
+# Piston is reached over the internal `coolify` network only.
+
+services:
+  app:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    volumes:
+      - 'mockify-data:/data'
+    environment:
+      - DATA_DIR=/data
+      # Piston (internal only; container name of the Piston service)
+      - 'PISTON_URL=${PISTON_URL:-http://piston-jg58lgmvsl6jcuzdk3qq566h:2000}'
+      - 'PISTON_MAX_RUN_TIMEOUT_MS=${PISTON_MAX_RUN_TIMEOUT_MS:-3000}'
+      - 'PISTON_CONCURRENCY=${PISTON_CONCURRENCY:-8}'
+      - 'PISTON_RUNTIMES=${PISTON_RUNTIMES:-}'
+      # PeerJS: browsers connect to wss://<PEER_HOST>:443/peerjs
+      - 'PEER_HOST=${PEER_HOST:-mockify.petermorastevens.rocks}'
+      - 'PEER_PORT=${PEER_PORT:-443}'
+      - 'PEER_SECURE=${PEER_SECURE:-true}'
+      - 'PEER_PATH=${PEER_PATH:-/peerjs}'
+      - 'PEER_KEY=${PEER_KEY:-peerjs}'
+      # Cloudflare TURN (optional; without it rooms fall back to STUN only)
+      - 'CLOUDFLARE_TURN_KEY_ID=${CLOUDFLARE_TURN_KEY_ID:-}'
+      - 'CLOUDFLARE_TURN_API_TOKEN=${CLOUDFLARE_TURN_API_TOKEN:-}'
+      # Accounts / content
+      - 'ALLOW_SIGNUPS=${ALLOW_SIGNUPS:-true}'
+      - 'SIGNUP_INVITE_CODE=${SIGNUP_INVITE_CODE:-}'
+      - 'ALLOW_PROBLEM_UPLOADS=${ALLOW_PROBLEM_UPLOADS:-true}'
+    healthcheck:
+      test: ['CMD', 'node', '-e', 'fetch("http://127.0.0.1:3000/").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))']
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  peerjs:
+    build:
+      context: ./client
+      dockerfile: Dockerfile.peer
+    restart: unless-stopped
+    environment:
+      - PEER_SERVER_PORT=9000
+      - 'PEER_PATH=${PEER_PATH:-/peerjs}'
+      - 'PEER_KEY=${PEER_KEY:-peerjs}'
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=coolify
+      - 'traefik.http.routers.mockify-peerjs.rule=Host(`mockify.petermorastevens.rocks`) && PathPrefix(`/peerjs`)'
+      - traefik.http.routers.mockify-peerjs.entrypoints=http
+      - traefik.http.routers.mockify-peerjs.priority=1000
+      - traefik.http.routers.mockify-peerjs.service=mockify-peerjs
+      - traefik.http.services.mockify-peerjs.loadbalancer.server.port=9000
+    healthcheck:
+      test: ['CMD', 'node', '-e', 'fetch("http://127.0.0.1:9000/peerjs").then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))']
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mockify-data:
