@@ -4,6 +4,7 @@ import "./globals.css";
 import Navbar from "@/components/navbar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
+import { getCurrentUser } from "@/lib/server/auth";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,27 +18,26 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Mockify",
-  description: "An open-source mock interview platform hosted at the minimum possible cost",
+  description: "Self-hosted, peer-to-peer mock interviews: shared editor, video, whiteboard and a real judge.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const user = await getCurrentUser();
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <Navbar />
-          <Toaster />
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <Navbar user={user ? { displayName: user.displayName, username: user.username } : null} />
+          <Toaster
+            position="bottom-left"
+            toastOptions={{
+              className: "!rounded-base !border-2 !border-border !shadow-shadow !font-base",
+            }}
+          />
           {children}
         </ThemeProvider>
       </body>

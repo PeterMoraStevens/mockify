@@ -13,6 +13,18 @@
   --ring: oklch(0% 0 0);
   --overlay: oklch(0% 0 0 / 0.8);
   --shadow: 2px 2px 0px 0px var(--border);
+  --shadow-lg: 4px 4px 0px 0px var(--border);
+  --shadow-xl: 8px 8px 0px 0px var(--border);
+  --muted: oklch(0% 0 0 / 0.6);
+  --grid-line: #8080804d;
+
+  /* Accents, used for badges, roles and states. */
+  --accent-blue: #59b8ff;
+  --accent-yellow: #ffd23f;
+  --accent-green: #3ddc97;
+  --accent-red: #ff6b6b;
+  --accent-violet: #a389f4;
+
   --chart-1: #ff7a05;
   --chart-2: #0099ff;
   --chart-3: #ffbf00;
@@ -30,6 +42,17 @@
   --border: oklch(0% 0 0);
   --ring: oklch(100% 0 0);
   --shadow: 2px 2px 0px 0px var(--border);
+  --shadow-lg: 4px 4px 0px 0px var(--border);
+  --shadow-xl: 8px 8px 0px 0px var(--border);
+  --muted: oklch(92.49% 0 0 / 0.6);
+  --grid-line: #ffffff14;
+
+  --accent-blue: #3a9fe8;
+  --accent-yellow: #e5b800;
+  --accent-green: #1fbf7c;
+  --accent-red: #e85555;
+  --accent-violet: #8b72e0;
+
   --chart-1: #eb6d00;
   --chart-2: #008ae5;
   --chart-3: #e5ac00;
@@ -39,8 +62,9 @@
 }
 
 @theme inline {
-  --animate-marquee: marquee 15s linear infinite;
-  --animate-marquee2: marquee2 15s linear infinite;
+  --animate-marquee: marquee 25s linear infinite;
+  --animate-marquee2: marquee2 25s linear infinite;
+  --animate-pulse-ring: pulse-ring 1.6s ease-out infinite;
 
   @keyframes marquee {
     0% {
@@ -60,6 +84,18 @@
     }
   }
 
+  @keyframes pulse-ring {
+    0% {
+      box-shadow: 0 0 0 0 var(--accent-green);
+    }
+    100% {
+      box-shadow: 0 0 0 8px transparent;
+    }
+  }
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
   --color-main: var(--main);
   --color-background: var(--background);
   --color-secondary-background: var(--secondary-background);
@@ -68,6 +104,12 @@
   --color-border: var(--border);
   --color-overlay: var(--overlay);
   --color-ring: var(--ring);
+  --color-muted: var(--muted);
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-yellow: var(--accent-yellow);
+  --color-accent-green: var(--accent-green);
+  --color-accent-red: var(--accent-red);
+  --color-accent-violet: var(--accent-violet);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -80,8 +122,10 @@
   --spacing-reverseBoxShadowY: -2px;
   --radius-base: 5px;
   --shadow-shadow: var(--shadow);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
   --font-weight-base: 500;
-  --font-weight-heading: 700;
+  --font-weight-heading: 800;
 }
 
 @layer base {
@@ -95,6 +139,114 @@
   h4,
   h5,
   h6 {
-    @apply font-heading;
+    @apply font-heading tracking-tight;
   }
+
+  ::selection {
+    background: var(--main);
+    color: var(--main-foreground);
+  }
+}
+
+@layer utilities {
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .bg-dots {
+    background-image: radial-gradient(var(--grid-line) 1.5px, transparent 1.5px);
+    background-size: 18px 18px;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+}
+
+/* ------------------------------------------------------------ markdown */
+.prose-brutal {
+  line-height: 1.65;
+}
+.prose-brutal > * + * {
+  margin-top: 0.85em;
+}
+.prose-brutal h1,
+.prose-brutal h2,
+.prose-brutal h3 {
+  font-weight: 800;
+  margin-top: 1.4em;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.prose-brutal ul {
+  list-style: square;
+  padding-left: 1.25rem;
+}
+.prose-brutal ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+.prose-brutal li + li {
+  margin-top: 0.25em;
+}
+.prose-brutal code {
+  font-family: var(--font-geist-mono);
+  font-size: 0.85em;
+  background: var(--background);
+  border: 1.5px solid var(--border);
+  border-radius: 4px;
+  padding: 0.05em 0.35em;
+}
+.prose-brutal pre {
+  font-family: var(--font-geist-mono);
+  background: var(--background);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-base);
+  padding: 0.75rem;
+  overflow-x: auto;
+}
+.prose-brutal pre code {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+.prose-brutal strong {
+  font-weight: 800;
+}
+.prose-brutal a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---------------------------------------------------------- codemirror */
+.cm-editor {
+  height: 100%;
+  font-size: 14px;
+}
+.cm-editor.cm-focused {
+  outline: none !important;
+}
+.cm-scroller {
+  font-family: var(--font-geist-mono) !important;
+}
+.cm-ySelectionInfo {
+  font-family: var(--font-geist-sans);
+  font-weight: 700;
+  border-radius: 3px 3px 3px 0;
+  padding: 1px 4px !important;
+  opacity: 1 !important;
+  top: -1.3em !important;
+  color: #000;
+  border: 1.5px solid #000;
+}
+
+/* --------------------------------------------------------- excalidraw */
+.excalidraw-host .excalidraw {
+  --color-primary: var(--main);
+  --border-radius-lg: var(--radius-base);
 }

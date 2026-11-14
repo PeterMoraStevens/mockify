@@ -1,0 +1,40 @@
+# Mockify homelab stack: app + PeerJS signaling (+ optional Cloudflare tunnel).
+# Piston runs separately on your LAN; point PISTON_URL at it in client/.env.
+#
+#   cp client/.env.example client/.env    # fill it in
+#   docker compose up -d --build                     # app :3000, peerjs :9000
+#   docker compose --profile tunnel up -d --build    # also start cloudflared
+
+services:
+  app:
+    build: ./client
+    env_file: ./client/.env
+    environment:
+      DATA_DIR: /data
+    volumes:
+      - mockify-data:/data
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  peerjs:
+    build:
+      context: ./client
+      dockerfile: Dockerfile.peer
+    environment:
+      PEER_KEY: ${PEER_KEY:-peerjs}
+    ports:
+      - "9000:9000"
+    restart: unless-stopped
+
+  cloudflared:
+    profiles: ["tunnel"]
+    image: cloudflare/cloudflared:2025.10.0
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN for the tunnel profile}
+    depends_on: [app, peerjs]
+    restart: unless-stopped
+
+volumes:
+  mockify-data:

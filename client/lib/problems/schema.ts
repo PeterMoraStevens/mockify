@@ -1,0 +1,80 @@
+import { z } from "zod";
+import { LANGUAGE_IDS } from "@/lib/languages";
+
+// Stress tests can be large (e.g. 10^4 numbers). Custom stdin in /api/run has its own, smaller cap.
+const MAX_IO = 512 * 1024;
+
+export const testCaseSchema = z.object({
+  input: z.string().max(MAX_IO),
+  output: z.string().max(MAX_IO),
+  explanation: z.string().max(2000).optional(),
+});
+
+const languageEnum = z.enum(LANGUAGE_IDS);
+
+export const problemSchema = z
+  .object({
+    slug: z
+      .string()
+      .min(3)
+      .max(64)
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "lowercase letters, digits and single dashes only"),
+    title: z.string().min(3).max(120),
+    difficulty: z.enum(["easy", "medium", "hard"]),
+    tags: z.array(z.string().min(1).max(32)).max(10).default([]),
+    license: z.string().min(2).max(120),
+    source: z
+      .object({ name: z.string().min(1).max(120), url: z.url().optional() })
+      .optional(),
+    /** Markdown. Should describe the stdin/stdout format. */
+    description: z.string().min(20).max(20000),
+    /** Visible test cases. Shown to both people and used by Run. */
+    examples: z.array(testCaseSchema).min(1, "at least one visible example is required").max(10),
+    /** Hidden test cases. Only ever read on the server. */
+    tests: z.array(testCaseSchema).max(100).default([]),
+    /** Starter code per language. Each should read stdin and call solve(). */
+    starters: z
+      .partialRecord(languageEnum, z.string().min(1).max(20000))
+      .refine((s) => Object.keys(s).length > 0, "at least one starter is required"),
+    interviewer: z
+      .object({
+        hints: z.array(z.string().max(2000)).max(10).default([]),
+        followUps: z.array(z.string().max(2000)).max(10).default([]),
+        expectedComplexity: z
+          .object({ time: z.string().max(80), space: z.string().max(80) })
+          .optional(),
+        notes: z.string().max(5000).optional(),
+      })
+      .default({ hints: [], followUps: [] }),
+    /** Required. Run through Piston against every test before publishing. */
+    reference: z.object({
+      language: languageEnum,
+      code: z.string().min(1).max(50000),
+    }),
+    limits: z
+      .object({
+        cpuTimeSec: z.number().min(0.5).max(15).optional(),
+        memoryKb: z.number().int().min(16000).max(512000).optional(),
+      })
+      .optional(),
+  })
+  .strict();
+
+export type Problem = z.infer<typeof problemSchema>;
+export type TestCase = z.infer<typeof testCaseSchema>;
+export type Difficulty = Problem["difficulty"];
+
+/** What the candidate's browser receives. No hidden tests, no reference, no hints. */
+export type PublicProblem = Pick<
+  Problem,
+  "slug" | "title" | "difficulty" | "tags" | "license" | "source" | "description" | "examples" | "starters"
+> & { hiddenCount: number };
+
+/** What the interviewer's browser receives, on top of the public view. */
+export type InterviewerProblem = PublicProblem & { interviewer: Problem["interviewer"] };
+
+export type ProblemSummary = Pick<Problem, "slug" | "title" | "difficulty" | "tags"> & {
+  languages: string[];
+  testCount: number;
+  uploaded: boolean;
+};

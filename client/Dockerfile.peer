@@ -1,0 +1,9 @@
+# PeerJS signaling server. Tiny, and separate from the app so either can restart alone.
+FROM node:24-alpine
+WORKDIR /srv
+RUN npm init -y >/dev/null && npm install --omit=dev --ignore-scripts peer@1.0.2
+COPY server/peer-server.mjs ./
+ENV PEER_SERVER_PORT=9000
+USER node
+EXPOSE 9000
+CMD ["node", "peer-server.mjs"]

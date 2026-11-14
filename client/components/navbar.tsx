@@ -1,113 +1,69 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
-import { Button } from "./ui/button";
-import { ModeToggle } from "./theme-toggle";
-import { Plus, UserPlus2Icon, DoorOpen } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { BookOpen, LogIn, Plus, Users } from "lucide-react";
 import Link from "next/link";
-import { useAuth } from "@/hooks/useAuth";
-import { CurrentUserAvatar } from "./current-user-avatar";
+import { NewRoomLink } from "@/components/new-room-link";
+import { usePathname } from "next/navigation";
+import { Logo } from "./logo";
+import { ModeToggle } from "./theme-toggle";
+import { Button } from "./ui/button";
+import { UserMenu } from "./user-menu";
+import { cn } from "@/lib/utils";
 
-function getActiveRoomCode(): string | null {
-  try {
-    const raw = localStorage.getItem("mockify_active_room");
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed.expiresAt && new Date(parsed.expiresAt) > new Date()) {
-      return parsed.code;
-    }
-    localStorage.removeItem("mockify_active_room");
-    return null;
-  } catch {
-    localStorage.removeItem("mockify_active_room");
-    return null;
-  }
-}
+type NavUser = { displayName: string; username: string } | null;
 
-const subscribe = (cb: () => void) => {
-  window.addEventListener("storage", cb);
-  return () => window.removeEventListener("storage", cb);
-};
+const LINKS = [
+  { href: "/problems", label: "Problems", icon: BookOpen },
+  { href: "/match", label: "Find a partner", icon: Users },
+];
 
-function useActiveRoom() {
-  return useSyncExternalStore(subscribe, getActiveRoomCode, () => null);
-}
-
-const LandingNavbar = () => {
-  const url = usePathname();
-  const { user } = useAuth();
-  const activeRoom = useActiveRoom();
+export default function Navbar({ user }: { user: NavUser }) {
+  const path = usePathname();
+  // The room has its own header.
+  if (/^\/room\/[a-z0-9]{20}/.test(path)) return null;
 
   return (
-    <div className="sticky z-99 justify-between top-0 flex bg-secondary-background w-full min-h-8 border-b-4 border-black p-4">
-      <div className="flex gap-4">
-        <Link href={"/"}>
-          <Button className={url === "/" ? "bg-amber-500" : ""}>Home</Button>
-        </Link>
-        <Link href={"/create-room"}>
-          <Button
-            className={url.includes("create-room") ? "bg-amber-500" : ""}
-          >
-            Create Room <Plus />
+    <header className="sticky top-0 z-50 border-b-4 border-border bg-secondary-background">
+      <nav className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:gap-4">
+        <Logo />
+        <div className="ml-4 hidden items-center gap-1 md:flex">
+          {LINKS.map(({ href, label, icon: Icon }) => {
+            const active = path === href || path.startsWith(`${href}/`);
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  "flex items-center gap-2 rounded-base border-2 px-3 py-1.5 text-sm font-heading transition-all",
+                  active
+                    ? "border-border bg-main text-main-foreground shadow-shadow"
+                    : "border-transparent hover:border-border hover:bg-background",
+                )}
+              >
+                <Icon className="size-4" />
+                {label}
+              </Link>
+            );
+          })}
+        </div>
+        <div className="ml-auto flex items-center gap-2 sm:gap-3">
+          <Button asChild size="sm" className="hidden sm:inline-flex">
+            <NewRoomLink>
+              New interview <Plus />
+            </NewRoomLink>
           </Button>
-        </Link>
-        <Link href={"/join-room"}>
-          <Button className={url.includes("join-room") ? "bg-amber-500" : ""}>
-            Join Room <UserPlus2Icon />
-          </Button>
-        </Link>
-        {activeRoom && (
-          <Link href={`/room/${activeRoom}`}>
-            <Button className="bg-green-500 hover:bg-green-600">
-              Rejoin Room <DoorOpen />
+          {user ? (
+            <UserMenu displayName={user.displayName} username={user.username} />
+          ) : (
+            <Button asChild size="sm" variant="neutral">
+              <Link href={`/login${path !== "/" ? `?next=${encodeURIComponent(path)}` : ""}`}>
+                Log in <LogIn />
+              </Link>
             </Button>
-          </Link>
-        )}
-      </div>
-      <div className="flex gap-4">
-        {user ? (
-          <CurrentUserAvatar />
-        ) : (
-          <Link href={"/auth/login"}>
-            <Button className={url.includes("login") ? "bg-amber-500" : ""}>
-              Login
-            </Button>
-          </Link>
-        )}
-
-        <ModeToggle />
-      </div>
-    </div>
+          )}
+          <ModeToggle />
+        </div>
+      </nav>
+    </header>
   );
-};
-
-const RoomNavbar = () => {
-  const url = usePathname();
-
-  return (
-    <div className="sticky z-99 justify-between top-0 flex bg-secondary-background w-full min-h-8 border-b-4 border-black p-4">
-      <div className="flex gap-4">
-        <Link href={"/"}>
-          <Button className={url === "/" ? "bg-amber-500" : ""}>Home</Button>
-        </Link>
-      </div>
-      <div className="flex gap-4">
-        <CurrentUserAvatar />
-        <ModeToggle />
-      </div>
-    </div>
-  );
-};
-
-const Navbar = () => {
-  const url = usePathname();
-
-  if (url.includes("/room/")) {
-    return <RoomNavbar />;
-  } else {
-    return <LandingNavbar />;
-  }
-};
-
-export default Navbar;
+}
