@@ -183,6 +183,10 @@ export function clientIp(req: Request): string {
 }
 
 export function isSecureRequest(req: Request): boolean {
+  // Cloudflare's own header survives Traefik, which rewrites X-Forwarded-Proto
+  // to "http" when the tunnel talks to it over plain HTTP.
+  const visitor = req.headers.get("cf-visitor");
+  if (visitor?.includes('"https"')) return true;
   const proto = req.headers.get("x-forwarded-proto");
   if (proto) return proto.split(",")[0].trim() === "https";
   return new URL(req.url).protocol === "https:";
