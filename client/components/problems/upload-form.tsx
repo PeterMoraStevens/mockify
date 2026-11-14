@@ -40,7 +40,7 @@ const TEMPLATE = {
 };
 
 type Issue = { path: string; message: string };
-type Result =
+export type Result =
   | { kind: "ok"; published: boolean; slug: string; verification: RunResponse }
   | { kind: "error"; message: string; issues?: Issue[]; verification?: RunResponse };
 
@@ -140,7 +140,7 @@ export function UploadForm() {
   );
 }
 
-function ResultPanel({ result }: { result: Result }) {
+export function ResultPanel({ result }: { result: Result }) {
   const v = result.verification;
   return (
     <div
@@ -158,8 +158,8 @@ function ResultPanel({ result }: { result: Result }) {
           : result.message}
       </div>
       {result.kind === "ok" && result.published && (
-        <Link href="/problems" className="mt-2 inline-block text-sm font-heading underline underline-offset-4">
-          See it in the problem set →
+        <Link href="/problems/library" className="mt-2 inline-block text-sm font-heading underline underline-offset-4">
+          See it in your problems →
         </Link>
       )}
       {result.kind === "error" && result.issues && (

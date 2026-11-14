@@ -1,8 +1,7 @@
 "use client";
 
-import { Camera, CameraOff, Copy, Mic, MicOff, MonitorUp, MonitorX, PhoneOff, UserRound } from "lucide-react";
+import { Camera, CameraOff, Mic, MicOff, MonitorUp, MonitorX, PhoneOff, Plus, UserRound } from "lucide-react";
 import { useEffect, useRef } from "react";
-import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import type { ConnSnapshot } from "@/lib/room/connection";
 import type { PresenceState, Role } from "@/lib/room/session-doc";
@@ -22,6 +21,7 @@ export function VideoPanel({
   onCam,
   onShare,
   onLeave,
+  onInvite,
   compact,
 }: {
   snap: ConnSnapshot;
@@ -37,6 +37,7 @@ export function VideoPanel({
   onCam: () => void;
   onShare: () => void;
   onLeave: () => void;
+  onInvite: () => void;
   compact: boolean;
 }) {
   const remoteHere = snap.status === "connected" && !!remote;
@@ -55,7 +56,7 @@ export function VideoPanel({
             color={remote.user.color}
           />
         ) : (
-          <WaitingTile status={snap.status} />
+          <EmptySeat status={snap.status} onInvite={onInvite} />
         )}
         <Tile
           track={localTrack}
@@ -178,27 +179,30 @@ function Tile({
   );
 }
 
-function WaitingTile({ status }: { status: ConnSnapshot["status"] }) {
-  const copy = async () => {
-    await navigator.clipboard.writeText(window.location.href);
-    toast.success("Room link copied");
-  };
-  const connecting = status === "connecting" || status === "reconnecting" || status === "signaling" || status === "init";
+/**
+ * The other seat while nobody is in it. Only says "connecting" when someone
+ * really is on their way in; otherwise it's an empty seat with an invite button.
+ */
+function EmptySeat({ status, onInvite }: { status: ConnSnapshot["status"]; onInvite: () => void }) {
+  const busy = status === "connecting" || status === "reconnecting";
   return (
     <div className="relative grid aspect-video shrink-0 place-items-center overflow-hidden rounded-base border-2 border-dashed border-border bg-background bg-dots p-3 text-center">
-      <div>
-        <div className="mx-auto grid size-12 place-items-center rounded-full border-2 border-border bg-secondary-background">
-          {connecting ? <Spinner /> : <UserRound className="size-6" />}
+      {busy ? (
+        <div>
+          <div className="mx-auto grid size-12 place-items-center rounded-full border-2 border-border bg-secondary-background">
+            <Spinner />
+          </div>
+          <div className="mt-2 text-sm font-heading">{status === "reconnecting" ? "Reconnecting…" : "Connecting…"}</div>
         </div>
-        <div className="mt-2 text-sm font-heading">
-          {status === "reconnecting" ? "Reconnecting…" : connecting ? "Connecting…" : "Waiting for the other person"}
-        </div>
-        {status === "waiting" && (
-          <button onClick={copy} className="mt-2 inline-flex items-center gap-1 text-xs font-heading underline underline-offset-4">
-            <Copy className="size-3" /> Copy invite link
-          </button>
-        )}
-      </div>
+      ) : (
+        <button onClick={onInvite} className="group flex flex-col items-center gap-2" title="Invite someone">
+          <span className="grid size-14 place-items-center rounded-full border-2 border-border bg-secondary-background shadow-shadow transition-all group-hover:translate-x-boxShadowX group-hover:translate-y-boxShadowY group-hover:bg-main group-hover:text-black group-hover:shadow-none">
+            <Plus className="size-7" />
+          </span>
+          <span className="text-sm font-heading">Empty seat</span>
+          <span className="text-xs text-muted">Invite someone</span>
+        </button>
+      )}
     </div>
   );
 }

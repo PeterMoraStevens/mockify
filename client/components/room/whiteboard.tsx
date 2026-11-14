@@ -3,7 +3,7 @@
 import "@excalidraw/excalidraw/index.css";
 import { CaptureUpdateAction, Excalidraw, reconcileElements } from "@excalidraw/excalidraw";
 import type { OrderedExcalidrawElement } from "@excalidraw/excalidraw/element/types";
-import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
+import type { Collaborator, ExcalidrawImperativeAPI, SocketId } from "@excalidraw/excalidraw/types";
 import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
 import type * as Y from "yjs";
@@ -20,7 +20,18 @@ type El = OrderedExcalidrawElement;
  * Excalidraw's own reconcileElements (version + versionNonce), so there are
  * no echo loops and concurrent edits settle the same way on both sides.
  */
-export default function Whiteboard({ doc }: { doc: Y.Doc }) {
+export type BoardPointer = { x: number; y: number; name: string; color: string };
+
+export default function Whiteboard({
+  doc,
+  onPointer,
+  remotePointer,
+}: {
+  doc: Y.Doc;
+  /** Local pointer in scene coordinates (so it lands right whatever the other person's zoom/scroll). */
+  onPointer?: (p: { x: number; y: number } | null) => void;
+  remotePointer?: BoardPointer | null;
+}) {
   const { resolvedTheme } = useTheme();
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   const pending = useRef<Map<string, El>>(new Map());
@@ -48,6 +59,20 @@ export default function Whiteboard({ doc }: { doc: Y.Doc }) {
     wb.observe(onRemote);
     return () => wb.unobserve(onRemote);
   }, [api, wb]);
+
+  // The other person's pointer, drawn by Excalidraw itself as a collaborator.
+  useEffect(() => {
+    if (!api) return;
+    const collaborators = new Map<SocketId, Collaborator>();
+    if (remotePointer) {
+      collaborators.set("remote" as SocketId, {
+        username: remotePointer.name,
+        color: { background: remotePointer.color, stroke: remotePointer.color },
+        pointer: { x: remotePointer.x, y: remotePointer.y, tool: "pointer" },
+      });
+    }
+    api.updateScene({ collaborators, captureUpdate: CaptureUpdateAction.NEVER });
+  }, [api, remotePointer]);
 
   const flush = () => {
     flushTimer.current = null;
@@ -84,11 +109,12 @@ export default function Whiteboard({ doc }: { doc: Y.Doc }) {
   );
 
   return (
-    <div className="excalidraw-host h-full w-full">
+    <div className="excalidraw-host h-full w-full" onPointerLeave={() => onPointer?.(null)}>
       <Excalidraw
         excalidrawAPI={setApi}
         initialData={{ elements: initialElements.current, scrollToContent: true }}
         onChange={onChange}
+        onPointerUpdate={(p) => onPointer?.({ x: p.pointer.x, y: p.pointer.y })}
         theme={resolvedTheme === "dark" ? "dark" : "light"}
         UIOptions={{
           tools: { image: false },

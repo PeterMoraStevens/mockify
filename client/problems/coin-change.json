@@ -1,0 +1,142 @@
+{
+  "slug": "coin-change",
+  "title": "Coin Change",
+  "difficulty": "medium",
+  "tags": [
+    "dynamic-programming",
+    "bfs"
+  ],
+  "license": "MIT",
+  "source": {
+    "name": "Mockify seed set"
+  },
+  "description": "Given coin denominations `coins` (unlimited supply of each) and a target `amount`, return the **fewest coins** that add up to `amount`, or `-1` if it can't be made.\n\n### Input\n- Line 1: `coins`, space-separated integers.\n- Line 2: `amount`, an integer.\n\n### Output\nOne integer.\n\n### Constraints\n- `1 <= coins.length <= 12`\n- `1 <= coins[i] <= 10^4`\n- `0 <= amount <= 10^4`",
+  "signature": {
+    "params": [
+      {
+        "name": "coins",
+        "type": "int[]"
+      },
+      {
+        "name": "amount",
+        "type": "int"
+      }
+    ],
+    "returns": "int"
+  },
+  "examples": [
+    {
+      "input": "1 2 5\n11\n",
+      "output": "3\n",
+      "explanation": "5 + 5 + 1."
+    },
+    {
+      "input": "2\n3\n",
+      "output": "-1\n",
+      "explanation": "Odd amounts can't be made from 2s."
+    },
+    {
+      "input": "1\n0\n",
+      "output": "0\n"
+    }
+  ],
+  "tests": [
+    {
+      "input": "1\n1\n",
+      "output": "1\n"
+    },
+    {
+      "input": "2\n4\n",
+      "output": "2\n"
+    },
+    {
+      "input": "3 7\n5\n",
+      "output": "-1\n"
+    },
+    {
+      "input": "186 419 83 408\n6249\n",
+      "output": "20\n"
+    },
+    {
+      "input": "1 3648\n2\n",
+      "output": "2\n"
+    },
+    {
+      "input": "58\n146\n",
+      "output": "-1\n"
+    },
+    {
+      "input": "14 47\n208\n",
+      "output": "-1\n"
+    },
+    {
+      "input": "2 39\n259\n",
+      "output": "37\n"
+    },
+    {
+      "input": "1 30 60\n99\n",
+      "output": "11\n"
+    },
+    {
+      "input": "4 5 10 23 59\n28\n",
+      "output": "2\n"
+    },
+    {
+      "input": "10 16 18 19 23 56\n286\n",
+      "output": "7\n"
+    },
+    {
+      "input": "54 58\n145\n",
+      "output": "-1\n"
+    },
+    {
+      "input": "4 35 50 59\n150\n",
+      "output": "3\n"
+    },
+    {
+      "input": "7 13 29 101 997\n9999\n",
+      "output": "11\n"
+    },
+    {
+      "input": "9999 10000\n10000\n",
+      "output": "1\n"
+    }
+  ],
+  "starters": {
+    "python": "import sys\nfrom typing import List\n\n\ndef solve(coins: List[int], amount: int) -> int:\n    # Return the fewest coins summing to amount, or -1.\n    return 0\n\n\ndef main() -> None:\n    lines = sys.stdin.read().split(\"\\n\")\n    coins = list(map(int, (lines[0] if len(lines) > 0 else \"\").split()))\n    amount = int((lines[1] if len(lines) > 1 else \"\").strip())\n    result = solve(coins, amount)\n    print(result)\n\n\nif __name__ == \"__main__\":\n    main()\n",
+    "javascript": "function solve(coins, amount) {\n  // Return the fewest coins summing to amount, or -1.\n  return 0;\n}\n\nfunction main() {\n  const lines = require(\"fs\").readFileSync(0, \"utf8\").split(\"\\n\");\n  const line = (i) => (lines[i] ?? \"\").replace(/\\r$/, \"\");\n  const coins = line(0).trim().split(/\\s+/).filter(Boolean).map(Number);\n  const amount = Number(line(1).trim());\n  const result = solve(coins, amount);\n  console.log(String(result));\n}\n\nmain();\n",
+    "typescript": "/// <reference lib=\"es2022\" />\ndeclare const require: any;\n\nfunction solve(coins: number[], amount: number): number {\n  // Return the fewest coins summing to amount, or -1.\n  return 0;\n}\n\nfunction main(): void {\n  const lines: string[] = require(\"fs\").readFileSync(0, \"utf8\").split(\"\\n\");\n  const line = (i: number): string => (lines[i] ?? \"\").replace(/\\r$/, \"\");\n  const coins = line(0).trim().split(/\\s+/).filter(Boolean).map(Number);\n  const amount = Number(line(1).trim());\n  const result = solve(coins, amount);\n  console.log(String(result));\n}\n\nmain();\n",
+    "java": "import java.io.*;\nimport java.util.*;\n\npublic class Main {\n    static int solve(int[] coins, int amount) {\n        // Return the fewest coins summing to amount, or -1.\n        return 0;\n    }\n\n    static String line(List<String> lines, int i) {\n        return i < lines.size() ? lines.get(i) : \"\";\n    }\n\n    static String[] readWords(String s) {\n        String t = s.trim();\n        return t.isEmpty() ? new String[0] : t.split(\"\\\\s+\");\n    }\n\n    public static void main(String[] args) throws IOException {\n        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));\n        List<String> lines = new ArrayList<>();\n        for (String l; (l = br.readLine()) != null; ) lines.add(l);\n        int[] coins = Arrays.stream(readWords(line(lines, 0))).mapToInt(Integer::parseInt).toArray();\n        int amount = Integer.parseInt(line(lines, 1).trim());\n        int result = solve(coins, amount);\n        System.out.println(result);\n    }\n}\n",
+    "c": "#include <stdbool.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\nint solve(int* coins, int coinsSize, int amount) {\n    // Return the fewest coins summing to amount, or -1.\n    return 0;\n}\n\nstatic char* read_all(void) {\n    size_t cap = 1 << 16, len = 0;\n    char* buf = malloc(cap);\n    for (;;) {\n        if (len + 1 >= cap) buf = realloc(buf, cap *= 2);\n        size_t r = fread(buf + len, 1, cap - len - 1, stdin);\n        if (r == 0) break;\n        len += r;\n    }\n    buf[len] = '\\0';\n    return buf;\n}\n\nstatic char** g_lines;\nstatic int g_count;\n\nstatic char* line(int i) {\n    return i < g_count ? g_lines[i] : \"\";\n}\n\nstatic int* parse_ints(const char* s, int* n) {\n    int cap = 16;\n    int* out = malloc(cap * sizeof(int));\n    char* end;\n    *n = 0;\n    for (;;) {\n        long v = strtol(s, &end, 10);\n        if (end == s) break;\n        if (*n == cap) out = realloc(out, (cap *= 2) * sizeof(int));\n        out[(*n)++] = (int)v;\n        s = end;\n    }\n    return out;\n}\n\nint main(void) {\n    char* input = read_all();\n    int cap = 8;\n    g_lines = malloc(cap * sizeof(char*));\n    for (char* p = input;;) {\n        if (g_count == cap) g_lines = realloc(g_lines, (cap *= 2) * sizeof(char*));\n        g_lines[g_count++] = p;\n        char* nl = strchr(p, '\\n');\n        size_t n = nl ? (size_t)(nl - p) : strlen(p);\n        if (n && p[n - 1] == '\\r') p[n - 1] = '\\0';\n        if (!nl) break;\n        *nl = '\\0';\n        p = nl + 1;\n    }\n    int coinsSize = 0;\n    int* coins = parse_ints(line(0), &coinsSize);\n    int amount = (int)strtol(line(1), NULL, 10);\n    int result = solve(coins, coinsSize, amount);\n    printf(\"%d\\n\", result);\n    return 0;\n}\n",
+    "cpp": "#include <algorithm>\n#include <climits>\n#include <iostream>\n#include <map>\n#include <queue>\n#include <set>\n#include <sstream>\n#include <stack>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <vector>\nusing namespace std;\n\nint solve(vector<int>& coins, int amount) {\n    // Return the fewest coins summing to amount, or -1.\n    return 0;\n}\n\nstatic vector<string> g_lines;\nstatic string line(size_t i) { return i < g_lines.size() ? g_lines[i] : string(); }\nstatic vector<int> readInts(const string& s) {\n    vector<int> v;\n    istringstream is(s);\n    for (int x; is >> x;) v.push_back(x);\n    return v;\n}\nstatic vector<string> readWords(const string& s) {\n    vector<string> v;\n    istringstream is(s);\n    for (string w; is >> w;) v.push_back(w);\n    return v;\n}\n\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n    for (string l; getline(cin, l);) {\n        if (!l.empty() && l.back() == '\\r') l.pop_back();\n        g_lines.push_back(l);\n    }\n    vector<int> coins = readInts(line(0));\n    int amount = stoi(line(1));\n    int result = solve(coins, amount);\n    cout << result << \"\\n\";\n    return 0;\n}\n",
+    "csharp": "using System;\nusing System.Collections.Generic;\nusing System.Linq;\n\npublic class Program {\n    static int Solve(int[] coins, int amount) {\n        // Return the fewest coins summing to amount, or -1.\n        return 0;\n    }\n\n    static string[] lines = new string[0];\n    static string Line(int i) => i < lines.Length ? lines[i] : \"\";\n    static string[] Words(string s) => s.Split(new[] { ' ', '\\t' }, StringSplitOptions.RemoveEmptyEntries);\n\n    public static void Main() {\n        lines = Console.In.ReadToEnd().Split('\\n').Select(l => l.TrimEnd('\\r')).ToArray();\n        int[] coins = Words(Line(0)).Select(int.Parse).ToArray();\n        int amount = int.Parse(Line(1).Trim());\n        var result = Solve(coins, amount);\n        Console.WriteLine(result);\n    }\n}\n",
+    "go": "package main\n\nimport (\n\t\"fmt\"\n\t\"io\"\n\t\"os\"\n\t\"strconv\"\n\t\"strings\"\n)\n\nfunc solve(coins []int, amount int) int {\n\t// Return the fewest coins summing to amount, or -1.\n\treturn 0\n}\n\nfunc atoi(s string) int {\n\tv, _ := strconv.Atoi(s)\n\treturn v\n}\n\nfunc parseInts(s string) []int {\n\tf := strings.Fields(s)\n\tout := make([]int, len(f))\n\tfor i, w := range f {\n\t\tout[i] = atoi(w)\n\t}\n\treturn out\n}\n\nfunc main() {\n\tdata, _ := io.ReadAll(os.Stdin)\n\tlines := strings.Split(strings.ReplaceAll(string(data), \"\\r\", \"\"), \"\\n\")\n\tline := func(i int) string {\n\t\tif i < len(lines) {\n\t\t\treturn lines[i]\n\t\t}\n\t\treturn \"\"\n\t}\n\tcoins := parseInts(line(0))\n\tamount := atoi(strings.TrimSpace(line(1)))\n\tresult := solve(coins, amount)\n\tfmt.Println(result)\n}\n",
+    "rust": "#![allow(unused_imports, unused_variables, unused_mut, dead_code)]\nuse std::collections::{HashMap, HashSet, VecDeque};\nuse std::io::{self, Read};\n\nfn solve(coins: Vec<i32>, amount: i32) -> i32 {\n    // Return the fewest coins summing to amount, or -1.\n    0\n}\n\nfn line<'a>(lines: &[&'a str], i: usize) -> &'a str {\n    lines.get(i).copied().unwrap_or(\"\")\n}\n\nfn main() {\n    let mut input = String::new();\n    io::stdin().read_to_string(&mut input).unwrap();\n    let lines: Vec<&str> = input.split('\\n').map(|l| l.trim_end_matches('\\r')).collect();\n    let coins: Vec<i32> = line(&lines, 0).split_whitespace().map(|x| x.parse().unwrap()).collect();\n    let amount: i32 = line(&lines, 1).trim().parse().unwrap();\n    let result = solve(coins, amount);\n    println!(\"{}\", result);\n}\n",
+    "kotlin": "fun solve(coins: IntArray, amount: Int): Int {\n    // Return the fewest coins summing to amount, or -1.\n    return 0\n}\n\nfun readWords(s: String): List<String> = s.trim().split(Regex(\"\\\\s+\")).filter { it.isNotEmpty() }\n\nfun main() {\n    val lines = generateSequence(::readLine).map { it.trimEnd('\\r') }.toList()\n    fun line(i: Int): String = lines.getOrElse(i) { \"\" }\n    val coins = readWords(line(0)).map { it.toInt() }.toIntArray()\n    val amount = line(1).trim().toInt()\n    val result = solve(coins, amount)\n    println(result)\n}\n",
+    "swift": "import Foundation\n\nfunc solve(_ coins: [Int], _ amount: Int) -> Int {\n    // Return the fewest coins summing to amount, or -1.\n    return 0\n}\n\nvar lines: [String] = []\nwhile let l = readLine() { lines.append(l) }\nfunc line(_ i: Int) -> String { i < lines.count ? lines[i] : \"\" }\n\nlet coins = line(0).split(whereSeparator: { $0 == \" \" || $0 == \"\\t\" }).compactMap { Int($0) }\nlet amount = Int(line(1).trimmingCharacters(in: .whitespaces)) ?? 0\nlet result = solve(coins, amount)\nprint(result)\n",
+    "ruby": "def solve(coins, amount)\n  # Return the fewest coins summing to amount, or -1.\n  0\nend\n\ndef line(lines, i)\n  (lines[i] || \"\").chomp\nend\n\nlines = STDIN.read.split(\"\\n\", -1)\ncoins = line(lines, 0).split.map(&:to_i)\namount = line(lines, 1).to_i\nresult = solve(coins, amount)\nputs result\n",
+    "php": "<?php\n\nfunction solve(array $coins, int $amount): int {\n    // Return the fewest coins summing to amount, or -1.\n    return 0;\n}\n\nfunction line(array $lines, int $i): string {\n    return rtrim($lines[$i] ?? \"\", \"\\r\");\n}\n\nfunction readWords(string $s): array {\n    return preg_split('/\\s+/', trim($s), -1, PREG_SPLIT_NO_EMPTY);\n}\n\n$lines = explode(\"\\n\", stream_get_contents(STDIN));\n$coins = array_map('intval', readWords(line($lines, 0)));\n$amount = intval(trim(line($lines, 1)));\n$result = solve($coins, $amount);\necho $result, \"\\n\";\n",
+    "scala": "import scala.collection.mutable\n\nobject Main {\n  def solve(coins: Array[Int], amount: Int): Int = {\n    // Return the fewest coins summing to amount, or -1.\n    0\n  }\n\n  def readWords(s: String): Array[String] = s.trim.split(\"\\\\s+\").filter(_.nonEmpty)\n\n  def main(args: Array[String]): Unit = {\n    val lines = scala.io.Source.stdin.getLines().toArray\n    def line(i: Int): String = if (i < lines.length) lines(i).stripSuffix(\"\\r\") else \"\"\n    val coins = readWords(line(0)).map(_.toInt)\n    val amount = line(1).trim.toInt\n    val result = solve(coins, amount)\n    println(result)\n  }\n}\n",
+    "dart": "import 'dart:io';\n\nint solve(List<int> coins, int amount) {\n  // Return the fewest coins summing to amount, or -1.\n  return 0;\n}\n\nList<String> readWords(String s) => s.trim().split(RegExp(r'\\s+')).where((w) => w.isNotEmpty).toList();\n\nvoid main() {\n  final lines = <String>[];\n  while (true) {\n    final l = stdin.readLineSync();\n    if (l == null) break;\n    lines.add(l);\n  }\n  String line(int i) => i < lines.length ? lines[i] : '';\n  final coins = readWords(line(0)).map(int.parse).toList();\n  final amount = int.parse(line(1).trim());\n  final result = solve(coins, amount);\n  print(result);\n}\n",
+    "bash": "#!/usr/bin/env bash\n\n# Return the fewest coins summing to amount, or -1.\n# Arguments: $1 = coins (space-separated), $2 = amount. Echo an integer.\nsolve() {\n  local coins=(${1})\n  local amount=\"${2}\"\n  echo 0\n}\n\nlines=()\nwhile IFS= read -r l || [[ -n \"$l\" ]]; do lines+=(\"${l%$'\\r'}\"); done\nsolve \"${lines[0]}\" \"${lines[1]}\"\n"
+  },
+  "interviewer": {
+    "hints": [
+      "Greedy (largest coin first) fails. Can you find a counter-example?",
+      "dp[a] = 1 + min(dp[a - c]) over coins c ≤ a."
+    ],
+    "followUps": [
+      "Count the number of ways to make the amount.",
+      "Return the actual coins used."
+    ],
+    "expectedComplexity": {
+      "time": "O(amount × coins)",
+      "space": "O(amount)"
+    },
+    "notes": "A great example to ask why greedy fails: coins [1, 3, 4], amount 6."
+  },
+  "reference": {
+    "language": "python",
+    "code": "import bisect\nimport heapq\nimport math\nfrom collections import Counter\nimport sys\nfrom typing import List\n\n\ndef solve(coins: List[int], amount: int) -> int:\n    # Return the fewest coins summing to amount, or -1.\n    INF = amount + 1\n    dp = [0] + [INF] * amount\n    for a in range(1, amount + 1):\n        for c in coins:\n            if c <= a and dp[a - c] + 1 < dp[a]:\n                dp[a] = dp[a - c] + 1\n    return -1 if dp[amount] > amount else dp[amount]\n\n\ndef main() -> None:\n    lines = sys.stdin.read().split(\"\\n\")\n    coins = list(map(int, (lines[0] if len(lines) > 0 else \"\").split()))\n    amount = int((lines[1] if len(lines) > 1 else \"\").strip())\n    result = solve(coins, amount)\n    print(result)\n\n\nif __name__ == \"__main__\":\n    main()\n"
+  }
+}

@@ -1,4 +1,4 @@
-import { FileCode2, Upload } from "lucide-react";
+import { FileCode2, Library, Plus } from "lucide-react";
 import Link from "next/link";
 import { Badge, DifficultyBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,11 +24,18 @@ export default function ProblemsPage() {
             Plain stdin/stdout problems that work in every Piston language. The interviewer picks one inside the room. Hidden tests stay on the server.
           </p>
         </div>
-        <Button asChild variant="neutral">
-          <Link href="/problems/new">
-            <Upload /> Upload a problem
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="neutral">
+            <Link href="/problems/library">
+              <Library /> Your problems
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/problems/new">
+              <Plus /> Create a problem
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div className="mt-8 flex flex-wrap gap-3">

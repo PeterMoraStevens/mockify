@@ -28,7 +28,9 @@ import {
   isSynthetic,
   listDevices,
   loadDevicePrefs,
+  loadMediaToggles,
   saveDevicePrefs,
+  saveMediaToggles,
   stopStream,
   type DevicePrefs,
 } from "@/lib/room/media";
@@ -58,6 +60,14 @@ export function Lobby({
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const handedOff = useRef(false);
+
+  // Start with the mic/camera choice from last time (read after mount: no localStorage on the server).
+  useEffect(() => {
+    const t = loadMediaToggles();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reading browser storage after mount
+    setMicOn(t.micOn);
+    setCamOn(t.camOn);
+  }, []);
 
   // Callers flip `acquiring` on first; it starts true for the initial grab.
   const acquire = useCallback(async (p: DevicePrefs) => {
@@ -178,10 +188,16 @@ export function Lobby({
               {user.displayName}
             </div>
             <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-3">
-              <RoundToggle on={micOn && hasMic} disabled={!hasMic} onClick={() => setMicOn((v) => !v)} label="microphone">
+              <RoundToggle on={micOn && hasMic} disabled={!hasMic} onClick={() => {
+                  setMicOn(!micOn);
+                  saveMediaToggles({ micOn: !micOn, camOn });
+                }} label="microphone">
                 {micOn && hasMic ? <Mic /> : <MicOff />}
               </RoundToggle>
-              <RoundToggle on={camOn && hasCam} disabled={!hasCam} onClick={() => setCamOn((v) => !v)} label="camera">
+              <RoundToggle on={camOn && hasCam} disabled={!hasCam} onClick={() => {
+                  setCamOn(!camOn);
+                  saveMediaToggles({ micOn, camOn: !camOn });
+                }} label="camera">
                 {camOn && hasCam ? <Camera /> : <CameraOff />}
               </RoundToggle>
             </div>

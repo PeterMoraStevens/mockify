@@ -1,0 +1,136 @@
+{
+  "slug": "edit-distance",
+  "title": "Edit Distance",
+  "difficulty": "hard",
+  "tags": [
+    "string",
+    "dynamic-programming"
+  ],
+  "license": "MIT",
+  "source": {
+    "name": "Mockify seed set"
+  },
+  "description": "Return the minimum number of operations to turn `word1` into `word2`, where an operation **inserts**, **deletes** or **replaces** one character.\n\n### Input\n- Line 1: `word1`, a string (the whole line).\n- Line 2: `word2`, a string (the whole line).\n\n### Output\nOne integer.\n\n### Constraints\n- `1 <= word1.length, word2.length <= 400`\n- Both words are lowercase English letters.",
+  "signature": {
+    "params": [
+      {
+        "name": "word1",
+        "type": "string"
+      },
+      {
+        "name": "word2",
+        "type": "string"
+      }
+    ],
+    "returns": "int"
+  },
+  "examples": [
+    {
+      "input": "horse\nros\n",
+      "output": "3\n",
+      "explanation": "horse → rorse → rose → ros."
+    },
+    {
+      "input": "intention\nexecution\n",
+      "output": "5\n"
+    }
+  ],
+  "tests": [
+    {
+      "input": "a\na\n",
+      "output": "0\n"
+    },
+    {
+      "input": "a\nb\n",
+      "output": "1\n"
+    },
+    {
+      "input": "ab\nba\n",
+      "output": "2\n"
+    },
+    {
+      "input": "abc\nyabd\n",
+      "output": "2\n"
+    },
+    {
+      "input": "kitten\nsitting\n",
+      "output": "3\n"
+    },
+    {
+      "input": "bbcbbaaa\naacacccaccc\n",
+      "output": "9\n"
+    },
+    {
+      "input": "bbcbbbcc\nabcbbbb\n",
+      "output": "3\n"
+    },
+    {
+      "input": "aab\nbbccc\n",
+      "output": "5\n"
+    },
+    {
+      "input": "c\nc\n",
+      "output": "0\n"
+    },
+    {
+      "input": "abacb\naa\n",
+      "output": "3\n"
+    },
+    {
+      "input": "bbaccacaaab\nabcbca\n",
+      "output": "7\n"
+    },
+    {
+      "input": "acbbbabbaba\nba\n",
+      "output": "9\n"
+    },
+    {
+      "input": "bbbcccbbab\nb\n",
+      "output": "9\n"
+    },
+    {
+      "input": "aaadbbacbdbabbbcaaabbaacaaacdadcdbabddcbbcddccabdbaccaddcbbdbcaacccabdbcdaddbcbbddaadbbbcadbddbabdaadbbaacdcdccacacbbbcdcdcdbbccdbbdbaabdcacbbbaccaccacadcbabbadbaabbabbaccbbdcdcbaacdbaccbbaabbddabadcbcbbdccccaccdcbdaccbcdbaddbdaddcabdcccabbbbdbdaacbabcaacadbaaaabbaacdaccddbdccabcaccbaccdccdbacdccbcadbcacccbddbadaabcabbddbdaabaacbccdcaccdcbccabbdbccacdabadcabbdbdcdaacbabbccdbdcccdbaccaacaccdaabdcdd\nbaabaccabdbabbbdccaaadbbdbaacdabbdbbdbdcbcacdaddbabaddabcdaccabdaabcbaacaccbbaaacdabcbadcdcccdbbadccdcddccbbdbdbadbbcabcacadccbddddbcdbaacddcadcdaccbcaddddbbbadbbcbcccdaccbabaccdadaacabadcbbddbbbbbcbdddaddbcdabccdddbcddcccdbbcbaaacdcabddbcdaabcbccabcadddcbbbdabadcccbdcabddbdaaaacbbddbbadcbccdcaddbaacccdbccaddcbdaaaacadddbaacddccacbbacbcddbaaccdbadacbdabbcbdbcbaccbbbdcdacbcdbcbdbdbdcaacaccbdbabdbdc\n",
+      "output": "206\n"
+    },
+    {
+      "input": "dgjloofazykqhaiotuwhwcrkreuvmbnfbyolwtpqldklqavdtnrzqlyxfpqeifcsjrihqmeqjocniwvavneddpelglzeytwtbfpohmkfcdcdcnxxujbwochnfvxghbojirmzmlcqoueostirhqzwjmscqkbuajuyjnckrivycebubibqgoepogbevtkkmuxqevwpfjuzdwrfytablxamntncxnoyqulijfmtjgutalmflllsagzrmdpgbevnsvwmhjuswlsoocdiltgkuhpyqluayyvpyzjaggokdmdmwfplrovclwhzyhqufdrmjhrrtidbbdexojugikhwddfyvwrwqrgilrrkhcgcbguxcryolquzdbgmnumvpttwcqmkuflpkjesbwcxufvp\nk\n",
+      "output": "399\n"
+    }
+  ],
+  "starters": {
+    "python": "import sys\nfrom typing import List\n\n\ndef solve(word1: str, word2: str) -> int:\n    # Return the minimum number of inserts, deletes and replaces to turn word1 into word2.\n    return 0\n\n\ndef main() -> None:\n    lines = sys.stdin.read().split(\"\\n\")\n    word1 = (lines[0] if len(lines) > 0 else \"\").rstrip(\"\\r\")\n    word2 = (lines[1] if len(lines) > 1 else \"\").rstrip(\"\\r\")\n    result = solve(word1, word2)\n    print(result)\n\n\nif __name__ == \"__main__\":\n    main()\n",
+    "javascript": "function solve(word1, word2) {\n  // Return the minimum number of inserts, deletes and replaces to turn word1 into word2.\n  return 0;\n}\n\nfunction main() {\n  const lines = require(\"fs\").readFileSync(0, \"utf8\").split(\"\\n\");\n  const line = (i) => (lines[i] ?? \"\").replace(/\\r$/, \"\");\n  const word1 = line(0);\n  const word2 = line(1);\n  const result = solve(word1, word2);\n  console.log(String(result));\n}\n\nmain();\n",
+    "typescript": "/// <reference lib=\"es2022\" />\ndeclare const require: any;\n\nfunction solve(word1: string, word2: string): number {\n  // Return the minimum number of inserts, deletes and replaces to turn word1 into word2.\n  return 0;\n}\n\nfunction main(): void {\n  const lines: string[] = require(\"fs\").readFileSync(0, \"utf8\").split(\"\\n\");\n  const line = (i: number): string => (lines[i] ?? \"\").replace(/\\r$/, \"\");\n  const word1 = line(0);\n  const word2 = line(1);\n  const result = solve(word1, word2);\n  console.log(String(result));\n}\n\nmain();\n",
+    "java": "import java.io.*;\nimport java.util.*;\n\npublic class Main {\n    static int solve(String word1, String word2) {\n        // Return the minimum number of inserts, deletes and replaces to turn word1 into word2.\n        return 0;\n    }\n\n    static String line(List<String> lines, int i) {\n        return i < lines.size() ? lines.get(i) : \"\";\n    }\n\n    static String[] readWords(String s) {\n        String t = s.trim();\n        return t.isEmpty() ? new String[0] : t.split(\"\\\\s+\");\n    }\n\n    public static void main(String[] args) throws IOException {\n        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));\n        List<String> lines = new ArrayList<>();\n        for (String l; (l = br.readLine()) != null; ) lines.add(l);\n        String word1 = line(lines, 0);\n        String word2 = line(lines, 1);\n        int result = solve(word1, word2);\n        System.out.println(result);\n    }\n}\n",
+    "c": "#include <stdbool.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\nint solve(char* word1, char* word2) {\n    // Return the minimum number of inserts, deletes and replaces to turn word1 into word2.\n    return 0;\n}\n\nstatic char* read_all(void) {\n    size_t cap = 1 << 16, len = 0;\n    char* buf = malloc(cap);\n    for (;;) {\n        if (len + 1 >= cap) buf = realloc(buf, cap *= 2);\n        size_t r = fread(buf + len, 1, cap - len - 1, stdin);\n        if (r == 0) break;\n        len += r;\n    }\n    buf[len] = '\\0';\n    return buf;\n}\n\nstatic char** g_lines;\nstatic int g_count;\n\nstatic char* line(int i) {\n    return i < g_count ? g_lines[i] : \"\";\n}\n\nint main(void) {\n    char* input = read_all();\n    int cap = 8;\n    g_lines = malloc(cap * sizeof(char*));\n    for (char* p = input;;) {\n        if (g_count == cap) g_lines = realloc(g_lines, (cap *= 2) * sizeof(char*));\n        g_lines[g_count++] = p;\n        char* nl = strchr(p, '\\n');\n        size_t n = nl ? (size_t)(nl - p) : strlen(p);\n        if (n && p[n - 1] == '\\r') p[n - 1] = '\\0';\n        if (!nl) break;\n        *nl = '\\0';\n        p = nl + 1;\n    }\n    char* word1 = line(0);\n    char* word2 = line(1);\n    int result = solve(word1, word2);\n    printf(\"%d\\n\", result);\n    return 0;\n}\n",
+    "cpp": "#include <algorithm>\n#include <climits>\n#include <iostream>\n#include <map>\n#include <queue>\n#include <set>\n#include <sstream>\n#include <stack>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <vector>\nusing namespace std;\n\nint solve(string word1, string word2) {\n    // Return the minimum number of inserts, deletes and replaces to turn word1 into word2.\n    return 0;\n}\n\nstatic vector<string> g_lines;\nstatic string line(size_t i) { return i < g_lines.size() ? g_lines[i] : string(); }\nstatic vector<int> readInts(const string& s) {\n    vector<int> v;\n    istringstream is(s);\n    for (int x; is >> x;) v.push_back(x);\n    return v;\n}\nstatic vector<string> readWords(const string& s) {\n    vector<string> v;\n    istringstream is(s);\n    for (string w; is >> w;) v.push_back(w);\n    return v;\n}\n\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n    for (string l; getline(cin, l);) {\n        if (!l.empty() && l.back() == '\\r') l.pop_back();\n        g_lines.push_back(l);\n    }\n    string word1 = line(0);\n    string word2 = line(1);\n    int result = solve(word1, word2);\n    cout << result << \"\\n\";\n    return 0;\n}\n",
+    "csharp": "using System;\nusing System.Collections.Generic;\nusing System.Linq;\n\npublic class Program {\n    static int Solve(string word1, string word2) {\n        // Return the minimum number of inserts, deletes and replaces to turn word1 into word2.\n        return 0;\n    }\n\n    static string[] lines = new string[0];\n    static string Line(int i) => i < lines.Length ? lines[i] : \"\";\n    static string[] Words(string s) => s.Split(new[] { ' ', '\\t' }, StringSplitOptions.RemoveEmptyEntries);\n\n    public static void Main() {\n        lines = Console.In.ReadToEnd().Split('\\n').Select(l => l.TrimEnd('\\r')).ToArray();\n        string word1 = Line(0);\n        string word2 = Line(1);\n        var result = Solve(word1, word2);\n        Console.WriteLine(result);\n    }\n}\n",
+    "go": "package main\n\nimport (\n\t\"fmt\"\n\t\"io\"\n\t\"os\"\n\t\"strings\"\n)\n\nfunc solve(word1 string, word2 string) int {\n\t// Return the minimum number of inserts, deletes and replaces to turn word1 into word2.\n\treturn 0\n}\n\nfunc main() {\n\tdata, _ := io.ReadAll(os.Stdin)\n\tlines := strings.Split(strings.ReplaceAll(string(data), \"\\r\", \"\"), \"\\n\")\n\tline := func(i int) string {\n\t\tif i < len(lines) {\n\t\t\treturn lines[i]\n\t\t}\n\t\treturn \"\"\n\t}\n\tword1 := line(0)\n\tword2 := line(1)\n\tresult := solve(word1, word2)\n\tfmt.Println(result)\n}\n",
+    "rust": "#![allow(unused_imports, unused_variables, unused_mut, dead_code)]\nuse std::collections::{HashMap, HashSet, VecDeque};\nuse std::io::{self, Read};\n\nfn solve(word1: String, word2: String) -> i32 {\n    // Return the minimum number of inserts, deletes and replaces to turn word1 into word2.\n    0\n}\n\nfn line<'a>(lines: &[&'a str], i: usize) -> &'a str {\n    lines.get(i).copied().unwrap_or(\"\")\n}\n\nfn main() {\n    let mut input = String::new();\n    io::stdin().read_to_string(&mut input).unwrap();\n    let lines: Vec<&str> = input.split('\\n').map(|l| l.trim_end_matches('\\r')).collect();\n    let word1: String = line(&lines, 0).to_string();\n    let word2: String = line(&lines, 1).to_string();\n    let result = solve(word1, word2);\n    println!(\"{}\", result);\n}\n",
+    "kotlin": "fun solve(word1: String, word2: String): Int {\n    // Return the minimum number of inserts, deletes and replaces to turn word1 into word2.\n    return 0\n}\n\nfun readWords(s: String): List<String> = s.trim().split(Regex(\"\\\\s+\")).filter { it.isNotEmpty() }\n\nfun main() {\n    val lines = generateSequence(::readLine).map { it.trimEnd('\\r') }.toList()\n    fun line(i: Int): String = lines.getOrElse(i) { \"\" }\n    val word1 = line(0)\n    val word2 = line(1)\n    val result = solve(word1, word2)\n    println(result)\n}\n",
+    "swift": "import Foundation\n\nfunc solve(_ word1: String, _ word2: String) -> Int {\n    // Return the minimum number of inserts, deletes and replaces to turn word1 into word2.\n    return 0\n}\n\nvar lines: [String] = []\nwhile let l = readLine() { lines.append(l) }\nfunc line(_ i: Int) -> String { i < lines.count ? lines[i] : \"\" }\n\nlet word1 = line(0)\nlet word2 = line(1)\nlet result = solve(word1, word2)\nprint(result)\n",
+    "ruby": "def solve(word1, word2)\n  # Return the minimum number of inserts, deletes and replaces to turn word1 into word2.\n  0\nend\n\ndef line(lines, i)\n  (lines[i] || \"\").chomp\nend\n\nlines = STDIN.read.split(\"\\n\", -1)\nword1 = line(lines, 0)\nword2 = line(lines, 1)\nresult = solve(word1, word2)\nputs result\n",
+    "php": "<?php\n\nfunction solve(string $word1, string $word2): int {\n    // Return the minimum number of inserts, deletes and replaces to turn word1 into word2.\n    return 0;\n}\n\nfunction line(array $lines, int $i): string {\n    return rtrim($lines[$i] ?? \"\", \"\\r\");\n}\n\nfunction readWords(string $s): array {\n    return preg_split('/\\s+/', trim($s), -1, PREG_SPLIT_NO_EMPTY);\n}\n\n$lines = explode(\"\\n\", stream_get_contents(STDIN));\n$word1 = line($lines, 0);\n$word2 = line($lines, 1);\n$result = solve($word1, $word2);\necho $result, \"\\n\";\n",
+    "scala": "import scala.collection.mutable\n\nobject Main {\n  def solve(word1: String, word2: String): Int = {\n    // Return the minimum number of inserts, deletes and replaces to turn word1 into word2.\n    0\n  }\n\n  def readWords(s: String): Array[String] = s.trim.split(\"\\\\s+\").filter(_.nonEmpty)\n\n  def main(args: Array[String]): Unit = {\n    val lines = scala.io.Source.stdin.getLines().toArray\n    def line(i: Int): String = if (i < lines.length) lines(i).stripSuffix(\"\\r\") else \"\"\n    val word1 = line(0)\n    val word2 = line(1)\n    val result = solve(word1, word2)\n    println(result)\n  }\n}\n",
+    "dart": "import 'dart:io';\n\nint solve(String word1, String word2) {\n  // Return the minimum number of inserts, deletes and replaces to turn word1 into word2.\n  return 0;\n}\n\nList<String> readWords(String s) => s.trim().split(RegExp(r'\\s+')).where((w) => w.isNotEmpty).toList();\n\nvoid main() {\n  final lines = <String>[];\n  while (true) {\n    final l = stdin.readLineSync();\n    if (l == null) break;\n    lines.add(l);\n  }\n  String line(int i) => i < lines.length ? lines[i] : '';\n  final word1 = line(0);\n  final word2 = line(1);\n  final result = solve(word1, word2);\n  print(result);\n}\n",
+    "bash": "#!/usr/bin/env bash\n\n# Return the minimum number of inserts, deletes and replaces to turn word1 into word2.\n# Arguments: $1 = word1, $2 = word2. Echo an integer.\nsolve() {\n  local word1=\"${1}\"\n  local word2=\"${2}\"\n  echo 0\n}\n\nlines=()\nwhile IFS= read -r l || [[ -n \"$l\" ]]; do lines+=(\"${l%$'\\r'}\"); done\nsolve \"${lines[0]}\" \"${lines[1]}\"\n"
+  },
+  "interviewer": {
+    "hints": [
+      "Define dp[i][j] = edits to turn the first i chars of word1 into the first j of word2.",
+      "If the last chars match, no edit; otherwise 1 + min of insert/delete/replace."
+    ],
+    "followUps": [
+      "Reconstruct the actual sequence of edits.",
+      "Only insertions and deletions are allowed."
+    ],
+    "expectedComplexity": {
+      "time": "O(m × n)",
+      "space": "O(n)"
+    }
+  },
+  "reference": {
+    "language": "python",
+    "code": "import bisect\nimport heapq\nimport math\nfrom collections import Counter\nimport sys\nfrom typing import List\n\n\ndef solve(word1: str, word2: str) -> int:\n    # Return the minimum number of inserts, deletes and replaces to turn word1 into word2.\n    m, n = len(word1), len(word2)\n    prev = list(range(n + 1))\n    for i in range(1, m + 1):\n        cur = [i] + [0] * n\n        for j in range(1, n + 1):\n            if word1[i - 1] == word2[j - 1]:\n                cur[j] = prev[j - 1]\n            else:\n                cur[j] = 1 + min(prev[j], cur[j - 1], prev[j - 1])\n        prev = cur\n    return prev[n]\n\n\ndef main() -> None:\n    lines = sys.stdin.read().split(\"\\n\")\n    word1 = (lines[0] if len(lines) > 0 else \"\").rstrip(\"\\r\")\n    word2 = (lines[1] if len(lines) > 1 else \"\").rstrip(\"\\r\")\n    result = solve(word1, word2)\n    print(result)\n\n\nif __name__ == \"__main__\":\n    main()\n"
+  }
+}

@@ -1,8 +1,10 @@
 import { z } from "zod";
 import { LANGUAGE_IDS } from "@/lib/languages";
+import { PARAM_TYPES, RETURN_TYPES } from "@/lib/problems/starters";
 
-// Stress tests can be large (e.g. 10^4 numbers). Custom stdin in /api/run has its own, smaller cap.
-const MAX_IO = 512 * 1024;
+// Each test is sent to Piston as its own request, and Piston rejects bodies over
+// ~100 KB (source code + stdin), so keep a single test's input well below that.
+export const MAX_IO = 64 * 1024;
 
 export const testCaseSchema = z.object({
   input: z.string().max(MAX_IO),
@@ -28,6 +30,16 @@ export const problemSchema = z
       .optional(),
     /** Markdown. Should describe the stdin/stdout format. */
     description: z.string().min(20).max(20000),
+    /** Set by the problem builder; lets it reopen a problem as a form. */
+    signature: z
+      .object({
+        params: z
+          .array(z.object({ name: z.string().min(1).max(40), type: z.enum(PARAM_TYPES) }))
+          .min(1)
+          .max(6),
+        returns: z.enum(RETURN_TYPES),
+      })
+      .optional(),
     /** Visible test cases. Shown to both people and used by Run. */
     examples: z.array(testCaseSchema).min(1, "at least one visible example is required").max(10),
     /** Hidden test cases. Only ever read on the server. */

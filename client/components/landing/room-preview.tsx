@@ -15,7 +15,7 @@ export function RoomPreview() {
           <span className="size-3 rounded-full border-2 border-border bg-accent-green" />
           <span className="ml-3 truncate font-mono text-xs opacity-70">mockify.home/room/k3x9…</span>
           <span className="ml-auto flex items-center gap-1 rounded-base border-2 border-border bg-accent-green px-1.5 text-[10px] font-heading uppercase text-black">
-            <span className="size-1.5 rounded-full bg-black" /> direct &middot; 18ms
+            <span className="size-1.5 rounded-full bg-black" /> live
           </span>
         </div>
 

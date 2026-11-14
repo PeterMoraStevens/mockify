@@ -1,51 +1,29 @@
 import { CalendarDays, MessageSquareQuote, Send } from "lucide-react";
 import { redirect } from "next/navigation";
 import { Avatar } from "@/components/avatar";
-import { Badge } from "@/components/ui/badge";
+import { ReviewCard } from "@/components/reviews/review-card";
 import { getProblem } from "@/lib/problems/store";
+import { REVIEW_CRITERIA, type ReviewRole } from "@/lib/rooms";
 import { getCurrentUser } from "@/lib/server/auth";
-import { db } from "@/lib/server/db";
+import { reviewsAbout, reviewsBy, type Review } from "@/lib/server/reviews";
 import { cn } from "@/lib/utils";
 
-type Row = {
-  id: string;
-  room_id: string;
-  problem_slug: string | null;
-  problem_solving: number;
-  communication: number;
-  code_quality: number;
-  notes: string;
-  created_at: number;
-  other_name: string;
-};
+const TONES = ["bg-main", "bg-accent-blue", "bg-accent-green"];
 
-const CATEGORIES = [
-  ["problem_solving", "Problem solving", "bg-main"],
-  ["communication", "Communication", "bg-accent-blue"],
-  ["code_quality", "Code quality", "bg-accent-green"],
-] as const;
+function averages(reviews: Review[]): (number | null)[] {
+  return [0, 1, 2].map((i) => (reviews.length ? reviews.reduce((s, r) => s + r.scores[i], 0) / reviews.length : null));
+}
 
 export default async function ProfilePage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/profile");
 
-  const received = db()
-    .prepare(
-      `SELECT f.*, u.display_name AS other_name FROM feedback f
-       JOIN users u ON u.id = f.interviewer_id
-       WHERE f.candidate_id = ? ORDER BY f.created_at DESC LIMIT 100`,
-    )
-    .all(user.id) as Row[];
-  const given = db()
-    .prepare(
-      `SELECT f.*, u.display_name AS other_name FROM feedback f
-       JOIN users u ON u.id = f.candidate_id
-       WHERE f.interviewer_id = ? ORDER BY f.created_at DESC LIMIT 100`,
-    )
-    .all(user.id) as Row[];
-
-  const avg = (k: (typeof CATEGORIES)[number][0]) =>
-    received.length ? received.reduce((s, r) => s + r[k], 0) / received.length : null;
+  const received = reviewsAbout(user.id);
+  const given = reviewsBy(user.id);
+  // Reviews written by your interviewers rate you as a candidate, and vice versa.
+  const asCandidate = received.filter((r) => r.authorRole === "interviewer");
+  const asInterviewer = received.filter((r) => r.authorRole === "candidate");
+  const title = (slug: string | null) => (slug ? (getProblem(slug)?.title ?? slug) : null);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-12">
@@ -59,44 +37,33 @@ export default async function ProfilePage() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Stat label="Interviews received" value={received.length} />
-          <Stat label="Interviews given" value={given.length} />
+          <Stat label="Reviews received" value={received.length} />
+          <Stat label="Reviews given" value={given.length} />
         </div>
       </section>
 
-      <section className="mt-8 grid gap-5 sm:grid-cols-3">
-        {CATEGORIES.map(([k, label, color]) => {
-          const a = avg(k);
-          return (
-            <div key={k} className="rounded-base border-2 border-border bg-secondary-background p-5 shadow-lg">
-              <div className="text-xs font-heading uppercase tracking-widest text-muted">{label}</div>
-              <div className="mt-2 flex items-baseline gap-1">
-                <span className="text-5xl font-heading">{a === null ? "–" : a.toFixed(1)}</span>
-                <span className="font-heading text-muted">/ 5</span>
-              </div>
-              <div className="mt-4 h-4 overflow-hidden rounded-base border-2 border-border bg-background">
-                <div className={cn("h-full border-r-2 border-border", color)} style={{ width: `${((a ?? 0) / 5) * 100}%` }} />
-              </div>
-            </div>
-          );
-        })}
-      </section>
+      <ScoreRow title="You as a candidate" role="interviewer" avg={averages(asCandidate)} count={asCandidate.length} />
+      <ScoreRow title="You as an interviewer" role="candidate" avg={averages(asInterviewer)} count={asInterviewer.length} />
 
       <div className="mt-12 grid gap-10 lg:grid-cols-2">
-        <FeedbackList
+        <ReviewList
           title="Feedback you received"
           icon={<MessageSquareQuote />}
-          rows={received}
-          otherLabel="from"
-          empty="No feedback yet. After a mock interview, your interviewer can leave scores and notes here."
-        />
-        <FeedbackList
+          empty="No feedback yet. When an interview ends, the other person can rate how it went."
+        >
+          {received.map((r) => (
+            <ReviewCard key={r.id} review={r} heading={`from ${r.authorName}`} problemTitle={title(r.problemSlug)} />
+          ))}
+        </ReviewList>
+        <ReviewList
           title="Feedback you gave"
           icon={<Send />}
-          rows={given}
-          otherLabel="for"
-          empty="When you interview someone, use the Feedback button in the room to leave them scores and notes."
-        />
+          empty="Use End interview in a room to wrap up and rate each other."
+        >
+          {given.map((r) => (
+            <ReviewCard key={r.id} review={r} heading={`for ${r.subjectName}`} problemTitle={title(r.problemSlug)} />
+          ))}
+        </ReviewList>
       </div>
     </main>
   );
@@ -111,18 +78,50 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
-function FeedbackList({
+function ScoreRow({
+  title,
+  role,
+  avg,
+  count,
+}: {
+  title: string;
+  role: ReviewRole;
+  avg: (number | null)[];
+  count: number;
+}) {
+  return (
+    <section className="mt-8">
+      <h2 className="text-xs font-heading uppercase tracking-widest text-muted">
+        {title} &middot; {count} review{count === 1 ? "" : "s"}
+      </h2>
+      <div className="mt-3 grid gap-5 sm:grid-cols-3">
+        {REVIEW_CRITERIA[role].map((c, i) => (
+          <div key={c.key} className="rounded-base border-2 border-border bg-secondary-background p-5 shadow-lg">
+            <div className="text-xs font-heading uppercase tracking-widest text-muted">{c.label}</div>
+            <div className="mt-2 flex items-baseline gap-1">
+              <span className="text-5xl font-heading">{avg[i] === null ? "–" : avg[i]!.toFixed(1)}</span>
+              <span className="font-heading text-muted">/ 5</span>
+            </div>
+            <div className="mt-4 h-4 overflow-hidden rounded-base border-2 border-border bg-background">
+              <div className={cn("h-full border-r-2 border-border", TONES[i])} style={{ width: `${((avg[i] ?? 0) / 5) * 100}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ReviewList({
   title,
   icon,
-  rows,
-  otherLabel,
   empty,
+  children,
 }: {
   title: string;
   icon: React.ReactNode;
-  rows: Row[];
-  otherLabel: string;
   empty: string;
+  children: React.ReactNode[];
 }) {
   return (
     <section>
@@ -130,35 +129,11 @@ function FeedbackList({
         {icon} {title}
       </h2>
       <div className="mt-5 space-y-4">
-        {rows.length === 0 && (
+        {children.length === 0 ? (
           <div className="rounded-base border-2 border-dashed border-border p-8 text-center text-sm text-muted">{empty}</div>
+        ) : (
+          children
         )}
-        {rows.map((r) => (
-          <article key={r.id} className="rounded-base border-2 border-border bg-secondary-background p-5 shadow-shadow">
-            <header className="flex flex-wrap items-center gap-2">
-              <span className="font-heading">
-                {otherLabel} {r.other_name}
-              </span>
-              {r.problem_slug && <Badge tone="neutral">{getProblem(r.problem_slug)?.title ?? r.problem_slug}</Badge>}
-              <time className="ml-auto text-xs text-muted">
-                {new Date(r.created_at).toLocaleDateString(undefined, { dateStyle: "medium" })}
-              </time>
-            </header>
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              {CATEGORIES.map(([k, label, color]) => (
-                <div key={k} className="rounded-base border-2 border-border bg-background p-2">
-                  <div className="truncate text-[10px] font-heading uppercase tracking-wide text-muted">{label}</div>
-                  <div className="mt-1 flex gap-0.5">
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <span key={n} className={cn("h-2.5 flex-1 rounded-sm border border-border", n <= r[k] ? color : "bg-secondary-background")} />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-            {r.notes && <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed">{r.notes}</p>}
-          </article>
-        ))}
       </div>
     </section>
   );

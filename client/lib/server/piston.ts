@@ -183,6 +183,9 @@ async function executeOne(
       ...(memoryBytes ? { run_memory_limit: memoryBytes } : {}),
     }),
   });
+  if (res.status === 413) {
+    throw new RunnerError("This test input plus your code is too large for the code runner (about 100 KB per run).");
+  }
   const body = (await res.json().catch(() => ({}))) as Partial<ExecuteResponse>;
   if (!res.ok || !body.run) {
     throw new RunnerError(`Piston rejected the job (${res.status}): ${body.message ?? "no run result"}`);

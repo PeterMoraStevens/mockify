@@ -56,7 +56,13 @@ type Msg =
   | { t: "aw"; d: Uint8Array | ArrayBuffer }
   | { t: "ping"; ts: number }
   | { t: "pong"; ts: number; now: number }
+  | { t: "eph"; d: Ephemeral }
   | { t: "bye" };
+
+/** Fire-and-forget state that isn't worth keeping in the doc (live pointers). */
+export type Ephemeral =
+  | { k: "ptr"; panel: string; x: number; y: number; pos?: number; dx?: number; dy?: number }
+  | { k: "ptr"; panel: null };
 
 const REMOTE = Symbol("remote");
 const HEARTBEAT_MS = 2000;
@@ -86,6 +92,7 @@ export class RoomConnection {
   private redialTimer: number | null = null;
   private remoteAwarenessClients = new Set<number>();
   private rttSamples: number[] = [];
+  private ephemeralListeners = new Set<(m: Ephemeral) => void>();
   private offsetSamples: number[] = [];
 
   constructor(
@@ -187,7 +194,7 @@ export class RoomConnection {
   private wirePeer(slot: Slot) {
     const peer = this.peer!;
 
-    peer.on("connection", (dc) => this.adoptData(dc));
+    peer.on("connection", (dc) => this.adoptData(dc, true));
     peer.on("call", (call) => {
       call.answer(this.localStream);
       this.adoptCall(call);
@@ -216,14 +223,18 @@ export class RoomConnection {
     });
   }
 
+  private lostAt = 0;
+
   private dial = () => {
     this.redialTimer = null;
     if (this.destroyed || !this.peer || this.snap.slot !== "b") return;
     if (this.dc?.open) return;
-    if (this.snap.status !== "connected") this.set({ status: this.snap.status === "waiting" ? "waiting" : "reconnecting" });
+    // After a while without them, stop saying "reconnecting": they've probably left.
+    if (this.snap.status === "reconnecting" && Date.now() - this.lostAt > 15_000) this.set({ status: "waiting" });
+
     const target = this.peerId("a");
     const dc = this.peer.connect(target, { reliable: true, serialization: "binary" });
-    this.adoptData(dc);
+    this.adoptData(dc, false);
     const call = this.peer.call(target, this.localStream);
     if (call) this.adoptCall(call);
     // If the data channel doesn't open soon, try again.
@@ -238,7 +249,12 @@ export class RoomConnection {
 
   // ---------------------------------------------------------- data channel
 
-  private adoptData(dc: DataConnection) {
+  /**
+   * `incoming` means the other person dialled us, so they're really there.
+   * b's own outgoing dials don't count: a may simply not have arrived yet,
+   * and showing "Connecting…" while nobody is coming is misleading.
+   */
+  private adoptData(dc: DataConnection, incoming: boolean) {
     // Newest connection wins (the other side refreshed).
     if (this.dc && this.dc !== dc) {
       const old = this.dc;
@@ -246,7 +262,7 @@ export class RoomConnection {
       old.close();
     }
     this.dc = dc;
-    if (this.snap.status !== "connected") this.set({ status: "connecting" });
+    if (incoming && this.snap.status !== "connected") this.set({ status: "connecting" });
 
     dc.on("open", () => {
       if (this.dc !== dc) return;
@@ -302,8 +318,12 @@ export class RoomConnection {
         this.set({ rttMs: Math.round(avgRtt), clockOffsetMs: Math.round(sorted[Math.floor(sorted.length / 2)]) });
         break;
       }
+      case "eph":
+        for (const l of this.ephemeralListeners) l(m.d);
+        break;
       case "bye":
-        this.onLinkLost(this.dc);
+        // They left on purpose: we're alone, not reconnecting.
+        this.onLinkLost(this.dc, true);
         break;
     }
   }
@@ -316,6 +336,18 @@ export class RoomConnection {
     } catch (e) {
       console.warn("[dc] send failed", e);
     }
+  }
+
+  /** Unreliable-in-spirit extras (we still use the reliable channel; they're tiny). */
+  sendEphemeral(d: Ephemeral) {
+    this.send({ t: "eph", d });
+  }
+
+  onEphemeral(fn: (m: Ephemeral) => void) {
+    this.ephemeralListeners.add(fn);
+    return () => {
+      this.ephemeralListeners.delete(fn);
+    };
   }
 
   private onDocUpdate = (update: Uint8Array, origin: unknown) => {
@@ -341,9 +373,10 @@ export class RoomConnection {
     this.send({ t: "ping", ts: performance.now() });
   };
 
-  private onLinkLost(dc: DataConnection | null) {
+  private onLinkLost(dc: DataConnection | null, graceful = false) {
     if (this.destroyed || !dc || this.dc !== dc) return;
     this.dc = null;
+    this.lostAt = Date.now();
     try {
       dc.close();
     } catch {}
@@ -354,7 +387,7 @@ export class RoomConnection {
       this.remoteAwarenessClients.clear();
     }
     this.set({
-      status: this.snap.slot === "b" ? "reconnecting" : "waiting",
+      status: this.snap.slot === "b" && !graceful ? "reconnecting" : "waiting",
       remoteStream: null,
       path: null,
       rttMs: null,
@@ -433,5 +466,6 @@ export class RoomConnection {
     this.dc?.close();
     this.peer?.destroy();
     this.listeners.clear();
+    this.ephemeralListeners.clear();
   }
 }

@@ -26,7 +26,7 @@ import type { LanguageId } from "@/lib/languages";
 
 const legacy = (mode: Parameters<typeof StreamLanguage.define>[0]) => () => StreamLanguage.define(mode);
 
-const LANG: Record<LanguageId, () => LanguageSupport | Extension> = {
+export const LANG: Record<LanguageId, () => LanguageSupport | Extension> = {
   python: () => python(),
   javascript: () => javascript(),
   typescript: () => javascript({ typescript: true }),
@@ -45,7 +45,7 @@ const LANG: Record<LanguageId, () => LanguageSupport | Extension> = {
   bash: legacy(shell),
 };
 
-const INDENT: Record<LanguageId, string> = {
+export const INDENT: Record<LanguageId, string> = {
   python: "    ",
   javascript: "  ",
   typescript: "  ",
@@ -64,7 +64,7 @@ const INDENT: Record<LanguageId, string> = {
   bash: "  ",
 };
 
-const lightTheme = EditorView.theme(
+export const lightTheme = EditorView.theme(
   {
     "&": { backgroundColor: "var(--secondary-background)", color: "var(--foreground)" },
     ".cm-gutters": {
@@ -82,7 +82,7 @@ const lightTheme = EditorView.theme(
   { dark: false },
 );
 
-const darkOverrides = EditorView.theme(
+export const darkOverrides = EditorView.theme(
   {
     ".cm-gutters": { borderRight: "2px solid var(--border)" },
   },
@@ -94,11 +94,14 @@ export function CodeEditor({
   awareness,
   language,
   readOnly = false,
+  onView,
 }: {
   ytext: Y.Text;
   awareness: Awareness;
   language: LanguageId;
   readOnly?: boolean;
+  /** Gets the EditorView (or null on teardown), e.g. to map pointers to text positions. */
+  onView?: (v: EditorView | null) => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
@@ -107,6 +110,39 @@ export function CodeEditor({
   const roC = useRef(new Compartment());
   const { resolvedTheme } = useTheme();
   const initial = useRef({ language, dark: resolvedTheme === "dark", readOnly });
+  const onViewRef = useRef(onView);
+  useEffect(() => {
+    onViewRef.current = onView;
+  }, [onView]);
+
+  // The other person's name flag shows while their cursor moves, then fades
+  // after a few seconds (hovering the caret brings it back).
+  useEffect(() => {
+    const el = host.current;
+    if (!el) return;
+    let last = "";
+    let timer: number | null = null;
+    const onChange = () => {
+      const cursors: string[] = [];
+      awareness.getStates().forEach((st, id) => {
+        if (id !== awareness.clientID && st?.cursor) cursors.push(`${id}:${JSON.stringify(st.cursor)}`);
+      });
+      const key = cursors.join("|");
+      if (key === last) return;
+      last = key;
+      el.dataset.flags = "on";
+      if (timer !== null) window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        delete el.dataset.flags;
+        timer = null;
+      }, 3000);
+    };
+    awareness.on("change", onChange);
+    return () => {
+      awareness.off("change", onChange);
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [awareness]);
 
   useEffect(() => {
     if (!host.current) return;
@@ -129,7 +165,9 @@ export function CodeEditor({
       }),
     });
     view.current = v;
+    onViewRef.current?.(v);
     return () => {
+      onViewRef.current?.(null);
       v.destroy();
       undoManager.destroy();
       view.current = null;
@@ -152,5 +190,5 @@ export function CodeEditor({
     view.current?.dispatch({ effects: roC.current.reconfigure(EditorState.readOnly.of(readOnly)) });
   }, [readOnly]);
 
-  return <div ref={host} className="h-full min-h-0 overflow-hidden" />;
+  return <div ref={host} className="cm-host h-full min-h-0 overflow-hidden" />;
 }

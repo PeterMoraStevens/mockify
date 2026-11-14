@@ -25,6 +25,25 @@ export function saveDevicePrefs(p: DevicePrefs) {
   } catch {}
 }
 
+const TOGGLES_KEY = "mockify:media-toggles";
+export type MediaToggles = { micOn: boolean; camOn: boolean };
+
+/** Last mic/camera on-off choice, so rejoining (or a new room) starts the same way. */
+export function loadMediaToggles(): MediaToggles {
+  try {
+    const v = JSON.parse(localStorage.getItem(TOGGLES_KEY) ?? "{}");
+    return { micOn: v.micOn !== false, camOn: v.camOn !== false };
+  } catch {
+    return { micOn: true, camOn: true };
+  }
+}
+
+export function saveMediaToggles(t: MediaToggles) {
+  try {
+    localStorage.setItem(TOGGLES_KEY, JSON.stringify(t));
+  } catch {}
+}
+
 export function blackVideoTrack(width = 640, height = 360): MediaStreamTrack {
   const canvas = Object.assign(document.createElement("canvas"), { width, height });
   const ctx = canvas.getContext("2d")!;

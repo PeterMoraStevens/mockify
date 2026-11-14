@@ -1,0 +1,141 @@
+{
+  "slug": "word-break",
+  "title": "Word Break",
+  "difficulty": "medium",
+  "tags": [
+    "string",
+    "dynamic-programming"
+  ],
+  "license": "MIT",
+  "source": {
+    "name": "Mockify seed set"
+  },
+  "description": "Given a string `s` and a dictionary `words`, return `true` if `s` can be split into a sequence of one or more dictionary words. Words may be reused.\n\n### Input\n- Line 1: `s`, a string (the whole line).\n- Line 2: `words`, space-separated words.\n\n### Output\n`true` or `false`.\n\n### Constraints\n- `1 <= s.length <= 300`\n- `1 <= words.length <= 1000`\n- `1 <= words[i].length <= 20`\n- Everything is lowercase English letters; dictionary words are distinct.",
+  "signature": {
+    "params": [
+      {
+        "name": "s",
+        "type": "string"
+      },
+      {
+        "name": "words",
+        "type": "string[]"
+      }
+    ],
+    "returns": "bool"
+  },
+  "examples": [
+    {
+      "input": "leetcode\nleet code\n",
+      "output": "true\n"
+    },
+    {
+      "input": "applepenapple\napple pen\n",
+      "output": "true\n",
+      "explanation": "Words can be reused."
+    },
+    {
+      "input": "catsandog\ncats dog sand and cat\n",
+      "output": "false\n"
+    }
+  ],
+  "tests": [
+    {
+      "input": "a\na\n",
+      "output": "true\n"
+    },
+    {
+      "input": "a\nb\n",
+      "output": "false\n"
+    },
+    {
+      "input": "aaaaaaa\naaaa aaa\n",
+      "output": "true\n"
+    },
+    {
+      "input": "ab\na b ab\n",
+      "output": "true\n"
+    },
+    {
+      "input": "bbabaabbaababaabbbbabbabbaaaaabbaaaaaabaaababba\naa aaba a bba baabb\n",
+      "output": "true\n"
+    },
+    {
+      "input": "baaabbbbaabbabaaaabbbaabababbbbabaaaaabbabbaababaa\naaaa b bba\n",
+      "output": "false\n"
+    },
+    {
+      "input": "bbbaabbbabaa\nba abbb bbab aa bba aaaba\n",
+      "output": "false\n"
+    },
+    {
+      "input": "aababaababaaaabaaabbbbbbaababaabab\naa aba\n",
+      "output": "false\n"
+    },
+    {
+      "input": "ababaaaabbbbbbbbbabbbaaabbbabbbabbbabbabbaba\nababa babb baaa babab babba\n",
+      "output": "false\n"
+    },
+    {
+      "input": "bbbaabbaabaabbaabbaabaabbbaabbbaabbaabbaabaabbaabbaabb\nbbaa b baa\n",
+      "output": "true\n"
+    },
+    {
+      "input": "aabaaabaaabaabbabababaabaabaabbabaabbabaaabaabbabababaabaaba\nab baba aaba\n",
+      "output": "true\n"
+    },
+    {
+      "input": "aabbbabbabbbbbaabaaabbbabababaabbaa\naa bbb a ab bba\n",
+      "output": "true\n"
+    },
+    {
+      "input": "abbaaaa\nba babab aa abb\n",
+      "output": "true\n"
+    },
+    {
+      "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaa\naaaa a\n",
+      "output": "true\n"
+    },
+    {
+      "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab\na aa aaa aaaa aaaaa aaaaaaaaaa\n",
+      "output": "false\n"
+    }
+  ],
+  "starters": {
+    "python": "import sys\nfrom typing import List\n\n\ndef solve(s: str, words: List[str]) -> bool:\n    # Return true if s can be split into dictionary words.\n    return False\n\n\ndef main() -> None:\n    lines = sys.stdin.read().split(\"\\n\")\n    s = (lines[0] if len(lines) > 0 else \"\").rstrip(\"\\r\")\n    words = (lines[1] if len(lines) > 1 else \"\").split()\n    result = solve(s, words)\n    print(\"true\" if result else \"false\")\n\n\nif __name__ == \"__main__\":\n    main()\n",
+    "javascript": "function solve(s, words) {\n  // Return true if s can be split into dictionary words.\n  return false;\n}\n\nfunction main() {\n  const lines = require(\"fs\").readFileSync(0, \"utf8\").split(\"\\n\");\n  const line = (i) => (lines[i] ?? \"\").replace(/\\r$/, \"\");\n  const s = line(0);\n  const words = line(1).trim().split(/\\s+/).filter(Boolean);\n  const result = solve(s, words);\n  console.log(result ? \"true\" : \"false\");\n}\n\nmain();\n",
+    "typescript": "/// <reference lib=\"es2022\" />\ndeclare const require: any;\n\nfunction solve(s: string, words: string[]): boolean {\n  // Return true if s can be split into dictionary words.\n  return false;\n}\n\nfunction main(): void {\n  const lines: string[] = require(\"fs\").readFileSync(0, \"utf8\").split(\"\\n\");\n  const line = (i: number): string => (lines[i] ?? \"\").replace(/\\r$/, \"\");\n  const s = line(0);\n  const words = line(1).trim().split(/\\s+/).filter(Boolean);\n  const result = solve(s, words);\n  console.log(result ? \"true\" : \"false\");\n}\n\nmain();\n",
+    "java": "import java.io.*;\nimport java.util.*;\n\npublic class Main {\n    static boolean solve(String s, String[] words) {\n        // Return true if s can be split into dictionary words.\n        return false;\n    }\n\n    static String line(List<String> lines, int i) {\n        return i < lines.size() ? lines.get(i) : \"\";\n    }\n\n    static String[] readWords(String s) {\n        String t = s.trim();\n        return t.isEmpty() ? new String[0] : t.split(\"\\\\s+\");\n    }\n\n    public static void main(String[] args) throws IOException {\n        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));\n        List<String> lines = new ArrayList<>();\n        for (String l; (l = br.readLine()) != null; ) lines.add(l);\n        String s = line(lines, 0);\n        String[] words = readWords(line(lines, 1));\n        boolean result = solve(s, words);\n        System.out.println(result ? \"true\" : \"false\");\n    }\n}\n",
+    "c": "#include <stdbool.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\nbool solve(char* s, char** words, int wordsSize) {\n    // Return true if s can be split into dictionary words.\n    return false;\n}\n\nstatic char* read_all(void) {\n    size_t cap = 1 << 16, len = 0;\n    char* buf = malloc(cap);\n    for (;;) {\n        if (len + 1 >= cap) buf = realloc(buf, cap *= 2);\n        size_t r = fread(buf + len, 1, cap - len - 1, stdin);\n        if (r == 0) break;\n        len += r;\n    }\n    buf[len] = '\\0';\n    return buf;\n}\n\nstatic char** g_lines;\nstatic int g_count;\n\nstatic char* line(int i) {\n    return i < g_count ? g_lines[i] : \"\";\n}\n\nstatic char** parse_words(char* s, int* n) {\n    int cap = 16;\n    char** out = malloc(cap * sizeof(char*));\n    *n = 0;\n    for (char* w = strtok(s, \" \\t\"); w; w = strtok(NULL, \" \\t\")) {\n        if (*n == cap) out = realloc(out, (cap *= 2) * sizeof(char*));\n        out[(*n)++] = w;\n    }\n    return out;\n}\n\nint main(void) {\n    char* input = read_all();\n    int cap = 8;\n    g_lines = malloc(cap * sizeof(char*));\n    for (char* p = input;;) {\n        if (g_count == cap) g_lines = realloc(g_lines, (cap *= 2) * sizeof(char*));\n        g_lines[g_count++] = p;\n        char* nl = strchr(p, '\\n');\n        size_t n = nl ? (size_t)(nl - p) : strlen(p);\n        if (n && p[n - 1] == '\\r') p[n - 1] = '\\0';\n        if (!nl) break;\n        *nl = '\\0';\n        p = nl + 1;\n    }\n    char* s = line(0);\n    int wordsSize = 0;\n    char** words = parse_words(line(1), &wordsSize);\n    bool result = solve(s, words, wordsSize);\n    printf(\"%s\\n\", result ? \"true\" : \"false\");\n    return 0;\n}\n",
+    "cpp": "#include <algorithm>\n#include <climits>\n#include <iostream>\n#include <map>\n#include <queue>\n#include <set>\n#include <sstream>\n#include <stack>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <vector>\nusing namespace std;\n\nbool solve(string s, vector<string>& words) {\n    // Return true if s can be split into dictionary words.\n    return false;\n}\n\nstatic vector<string> g_lines;\nstatic string line(size_t i) { return i < g_lines.size() ? g_lines[i] : string(); }\nstatic vector<int> readInts(const string& s) {\n    vector<int> v;\n    istringstream is(s);\n    for (int x; is >> x;) v.push_back(x);\n    return v;\n}\nstatic vector<string> readWords(const string& s) {\n    vector<string> v;\n    istringstream is(s);\n    for (string w; is >> w;) v.push_back(w);\n    return v;\n}\n\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n    for (string l; getline(cin, l);) {\n        if (!l.empty() && l.back() == '\\r') l.pop_back();\n        g_lines.push_back(l);\n    }\n    string s = line(0);\n    vector<string> words = readWords(line(1));\n    bool result = solve(s, words);\n    cout << (result ? \"true\" : \"false\") << \"\\n\";\n    return 0;\n}\n",
+    "csharp": "using System;\nusing System.Collections.Generic;\nusing System.Linq;\n\npublic class Program {\n    static bool Solve(string s, string[] words) {\n        // Return true if s can be split into dictionary words.\n        return false;\n    }\n\n    static string[] lines = new string[0];\n    static string Line(int i) => i < lines.Length ? lines[i] : \"\";\n    static string[] Words(string s) => s.Split(new[] { ' ', '\\t' }, StringSplitOptions.RemoveEmptyEntries);\n\n    public static void Main() {\n        lines = Console.In.ReadToEnd().Split('\\n').Select(l => l.TrimEnd('\\r')).ToArray();\n        string s = Line(0);\n        string[] words = Words(Line(1));\n        var result = Solve(s, words);\n        Console.WriteLine(result ? \"true\" : \"false\");\n    }\n}\n",
+    "go": "package main\n\nimport (\n\t\"fmt\"\n\t\"io\"\n\t\"os\"\n\t\"strings\"\n)\n\nfunc solve(s string, words []string) bool {\n\t// Return true if s can be split into dictionary words.\n\treturn false\n}\n\nfunc main() {\n\tdata, _ := io.ReadAll(os.Stdin)\n\tlines := strings.Split(strings.ReplaceAll(string(data), \"\\r\", \"\"), \"\\n\")\n\tline := func(i int) string {\n\t\tif i < len(lines) {\n\t\t\treturn lines[i]\n\t\t}\n\t\treturn \"\"\n\t}\n\ts := line(0)\n\twords := strings.Fields(line(1))\n\tresult := solve(s, words)\n\tfmt.Println(result)\n}\n",
+    "rust": "#![allow(unused_imports, unused_variables, unused_mut, dead_code)]\nuse std::collections::{HashMap, HashSet, VecDeque};\nuse std::io::{self, Read};\n\nfn solve(s: String, words: Vec<String>) -> bool {\n    // Return true if s can be split into dictionary words.\n    false\n}\n\nfn line<'a>(lines: &[&'a str], i: usize) -> &'a str {\n    lines.get(i).copied().unwrap_or(\"\")\n}\n\nfn main() {\n    let mut input = String::new();\n    io::stdin().read_to_string(&mut input).unwrap();\n    let lines: Vec<&str> = input.split('\\n').map(|l| l.trim_end_matches('\\r')).collect();\n    let s: String = line(&lines, 0).to_string();\n    let words: Vec<String> = line(&lines, 1).split_whitespace().map(String::from).collect();\n    let result = solve(s, words);\n    println!(\"{}\", result);\n}\n",
+    "kotlin": "fun solve(s: String, words: Array<String>): Boolean {\n    // Return true if s can be split into dictionary words.\n    return false\n}\n\nfun readWords(s: String): List<String> = s.trim().split(Regex(\"\\\\s+\")).filter { it.isNotEmpty() }\n\nfun main() {\n    val lines = generateSequence(::readLine).map { it.trimEnd('\\r') }.toList()\n    fun line(i: Int): String = lines.getOrElse(i) { \"\" }\n    val s = line(0)\n    val words = readWords(line(1)).toTypedArray()\n    val result = solve(s, words)\n    println(result)\n}\n",
+    "swift": "import Foundation\n\nfunc solve(_ s: String, _ words: [String]) -> Bool {\n    // Return true if s can be split into dictionary words.\n    return false\n}\n\nvar lines: [String] = []\nwhile let l = readLine() { lines.append(l) }\nfunc line(_ i: Int) -> String { i < lines.count ? lines[i] : \"\" }\n\nlet s = line(0)\nlet words = line(1).split(whereSeparator: { $0 == \" \" || $0 == \"\\t\" }).map(String.init)\nlet result = solve(s, words)\nprint(result)\n",
+    "ruby": "def solve(s, words)\n  # Return true if s can be split into dictionary words.\n  false\nend\n\ndef line(lines, i)\n  (lines[i] || \"\").chomp\nend\n\nlines = STDIN.read.split(\"\\n\", -1)\ns = line(lines, 0)\nwords = line(lines, 1).split\nresult = solve(s, words)\nputs(result ? \"true\" : \"false\")\n",
+    "php": "<?php\n\nfunction solve(string $s, array $words): bool {\n    // Return true if s can be split into dictionary words.\n    return false;\n}\n\nfunction line(array $lines, int $i): string {\n    return rtrim($lines[$i] ?? \"\", \"\\r\");\n}\n\nfunction readWords(string $s): array {\n    return preg_split('/\\s+/', trim($s), -1, PREG_SPLIT_NO_EMPTY);\n}\n\n$lines = explode(\"\\n\", stream_get_contents(STDIN));\n$s = line($lines, 0);\n$words = readWords(line($lines, 1));\n$result = solve($s, $words);\necho $result ? \"true\" : \"false\", \"\\n\";\n",
+    "scala": "import scala.collection.mutable\n\nobject Main {\n  def solve(s: String, words: Array[String]): Boolean = {\n    // Return true if s can be split into dictionary words.\n    false\n  }\n\n  def readWords(s: String): Array[String] = s.trim.split(\"\\\\s+\").filter(_.nonEmpty)\n\n  def main(args: Array[String]): Unit = {\n    val lines = scala.io.Source.stdin.getLines().toArray\n    def line(i: Int): String = if (i < lines.length) lines(i).stripSuffix(\"\\r\") else \"\"\n    val s = line(0)\n    val words = readWords(line(1))\n    val result = solve(s, words)\n    println(result)\n  }\n}\n",
+    "dart": "import 'dart:io';\n\nbool solve(String s, List<String> words) {\n  // Return true if s can be split into dictionary words.\n  return false;\n}\n\nList<String> readWords(String s) => s.trim().split(RegExp(r'\\s+')).where((w) => w.isNotEmpty).toList();\n\nvoid main() {\n  final lines = <String>[];\n  while (true) {\n    final l = stdin.readLineSync();\n    if (l == null) break;\n    lines.add(l);\n  }\n  String line(int i) => i < lines.length ? lines[i] : '';\n  final s = line(0);\n  final words = readWords(line(1));\n  final result = solve(s, words);\n  print(result);\n}\n",
+    "bash": "#!/usr/bin/env bash\n\n# Return true if s can be split into dictionary words.\n# Arguments: $1 = s, $2 = words (space-separated). Echo true or false.\nsolve() {\n  local s=\"${1}\"\n  local words=(${2})\n  echo false\n}\n\nlines=()\nwhile IFS= read -r l || [[ -n \"$l\" ]]; do lines+=(\"${l%$'\\r'}\"); done\nsolve \"${lines[0]}\" \"${lines[1]}\"\n"
+  },
+  "interviewer": {
+    "hints": [
+      "ok[i] = can the first i characters be split?",
+      "ok[i] is true if some ok[j] is true and s[j:i] is a word."
+    ],
+    "followUps": [
+      "Return every possible sentence (Word Break II).",
+      "What if the dictionary is huge? (Trie.)"
+    ],
+    "expectedComplexity": {
+      "time": "O(n × maxWordLength)",
+      "space": "O(n)"
+    },
+    "notes": "The all-'a' string with a 'b' at the end makes naive recursion exponential."
+  },
+  "reference": {
+    "language": "python",
+    "code": "import bisect\nimport heapq\nimport math\nfrom collections import Counter\nimport sys\nfrom typing import List\n\n\ndef solve(s: str, words: List[str]) -> bool:\n    # Return true if s can be split into dictionary words.\n    dictionary = set(words)\n    longest = max(len(w) for w in words)\n    ok = [True] + [False] * len(s)\n    for i in range(1, len(s) + 1):\n        for j in range(max(0, i - longest), i):\n            if ok[j] and s[j:i] in dictionary:\n                ok[i] = True\n                break\n    return ok[len(s)]\n\n\ndef main() -> None:\n    lines = sys.stdin.read().split(\"\\n\")\n    s = (lines[0] if len(lines) > 0 else \"\").rstrip(\"\\r\")\n    words = (lines[1] if len(lines) > 1 else \"\").split()\n    result = solve(s, words)\n    print(\"true\" if result else \"false\")\n\n\nif __name__ == \"__main__\":\n    main()\n"
+  }
+}

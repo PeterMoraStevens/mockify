@@ -1,7 +1,7 @@
 "use client";
 
-import { BookOpen, ChevronDown, Eye, EyeOff, Gauge, Lightbulb, ListChecks, NotebookPen, Sparkles } from "lucide-react";
-import { useEffect, useState } from "react";
+import { BookOpen, ChevronDown, Eye, EyeOff, Gauge, Lightbulb, ListChecks, NotebookPen, Share2, Sparkles } from "lucide-react";
+import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Badge, DifficultyBadge } from "@/components/ui/badge";
@@ -16,13 +16,14 @@ import {
 import { Tabs } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { InterviewerProblem, ProblemSummary } from "@/lib/problems/schema";
+import type { SharedNote } from "@/lib/room/session-doc";
 import { cn } from "@/lib/utils";
 import type { AnyProblem } from "./room-view";
 
 type Tab = "problem" | "interviewer" | "notes";
 
 export function ProblemPanel({
-  roomId,
+  notes,
   problem,
   problems,
   isInterviewer,
@@ -30,7 +31,7 @@ export function ProblemPanel({
   onPick,
   remoteName,
 }: {
-  roomId: string;
+  notes: NotesProps;
   problem: AnyProblem | null;
   problems: ProblemSummary[];
   isInterviewer: boolean;
@@ -51,7 +52,7 @@ export function ProblemPanel({
         items={[
           { value: "problem", label: "Problem", icon: <BookOpen /> },
           { value: "interviewer", label: "Guide", icon: <Lightbulb />, hidden: !isInterviewer, dot: !!interviewer?.hints.length },
-          { value: "notes", label: "Notes", icon: <NotebookPen /> },
+          { value: "notes", label: "Notes", icon: <NotebookPen />, dot: !!notes.partnerNote?.text.trim() },
         ]}
       />
       <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
@@ -66,7 +67,7 @@ export function ProblemPanel({
           />
         )}
         {effectiveTab === "interviewer" && <GuideTab problem={problem} guide={interviewer} />}
-        {effectiveTab === "notes" && <NotesTab roomId={roomId} isInterviewer={isInterviewer} />}
+        {effectiveTab === "notes" && <NotesTab notes={notes} isInterviewer={isInterviewer} remoteName={remoteName} />}
       </div>
     </section>
   );
@@ -320,44 +321,56 @@ function SectionHead({ icon, title }: { icon: React.ReactNode; title: string }) 
   );
 }
 
-function NotesTab({ roomId, isInterviewer }: { roomId: string; isInterviewer: boolean }) {
-  const key = `mockify:room:${roomId}:notes`;
-  const [text, setText] = useState("");
-  const [loaded, setLoaded] = useState(false);
+export type NotesProps = {
+  text: string;
+  onText: (t: string) => void;
+  shared: boolean;
+  onShared: (v: boolean) => void;
+  saving: "idle" | "saving" | "saved" | "error";
+  partnerNote: SharedNote | null;
+};
 
-  useEffect(() => {
-    try {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- reading browser storage after mount
-      setText(localStorage.getItem(key) ?? "");
-    } catch {}
-    setLoaded(true);
-  }, [key]);
-
-  useEffect(() => {
-    if (!loaded) return;
-    const t = window.setTimeout(() => {
-      try {
-        localStorage.setItem(key, text);
-      } catch {}
-    }, 400);
-    return () => window.clearTimeout(t);
-  }, [key, text, loaded]);
-
+function NotesTab({ notes, isInterviewer, remoteName }: { notes: NotesProps; isInterviewer: boolean; remoteName: string | null }) {
+  const other = remoteName ?? (isInterviewer ? "the candidate" : "the interviewer");
   return (
     <div className="flex h-full flex-col gap-3 p-4">
-      <div className="rounded-base border-2 border-border bg-accent-violet/30 p-3 text-xs">
-        <span className="font-heading">Private.</span> These stay in this browser and are never sent to {isInterviewer ? "the candidate" : "the interviewer"} or the server.
-      </div>
+      <label className="flex cursor-pointer items-center gap-3 rounded-base border-2 border-border bg-background p-2.5 text-xs">
+        <input
+          type="checkbox"
+          className="size-4 accent-black"
+          checked={notes.shared}
+          onChange={(e) => notes.onShared(e.target.checked)}
+        />
+        <span className="min-w-0 flex-1">
+          <span className="font-heading">{notes.shared ? `Shared with ${other}` : "Private"}</span>
+          <span className="text-muted">
+            {" "}
+            &middot; {notes.shared ? "they can read these live and on the summary." : `saved to your account, never shown to ${other}.`}
+          </span>
+        </span>
+        <span className="shrink-0 text-muted">
+          {notes.saving === "saving" ? "Saving…" : notes.saving === "error" ? "Not saved" : notes.saving === "saved" ? "Saved" : ""}
+        </span>
+      </label>
       <Textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
+        value={notes.text}
+        onChange={(e) => notes.onText(e.target.value)}
         placeholder={
           isInterviewer
             ? "• Asked clarifying questions?\n• Considered edge cases?\n• Talked through complexity?"
             : "Scratch space for your own thinking…"
         }
-        className="min-h-60 flex-1 resize-none font-mono text-xs leading-5"
+        className="min-h-48 flex-1 resize-none font-mono text-xs leading-5"
+        maxLength={50_000}
       />
+      {notes.partnerNote && notes.partnerNote.text.trim() && (
+        <div className="max-h-[45%] min-h-24 overflow-y-auto rounded-base border-2 border-border bg-accent-blue/20 p-3 scrollbar-thin">
+          <div className="mb-1 flex items-center gap-1.5 text-[10px] font-heading uppercase tracking-wider">
+            <Share2 className="size-3" /> {notes.partnerNote.name}&apos;s shared notes
+          </div>
+          <pre className="font-mono text-xs leading-5 whitespace-pre-wrap">{notes.partnerNote.text}</pre>
+        </div>
+      )}
     </div>
   );
 }

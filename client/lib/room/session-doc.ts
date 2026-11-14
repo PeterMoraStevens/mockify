@@ -12,8 +12,12 @@ import type { RunMode, RunResponse } from "@/lib/run-types";
  *   code      Y.Text   the editor
  *   session   Y.Map    problem slug, language, which slot is interviewing
  *   timer     Y.Map    shared countdown
- *   run       Y.Map    last run/submit result + who is running
+ *   run       Y.Map    latest test run and latest custom run (kept separately) + who is running
  *   wb        Y.Map    whiteboard elements keyed by element id
+ *   notes     Y.Map    notes people chose to share, keyed by user id
+ *
+ * Both browsers also save the doc to the server every so often, so a room can
+ * be rejoined later and the interview summary has the code and whiteboard.
  */
 
 export type Slot = "a" | "b";
@@ -30,11 +34,21 @@ export type TimerState = {
   author: Slot | null;
 };
 
+export type RunResult = RunResponse & { by: Slot; byName: string; at: number; language: LanguageId; error?: string };
+
 export type RunState = {
   runningBy: Slot | null;
   runningMode: RunMode | null;
-  last: (RunResponse & { by: Slot; byName: string; at: number; language: LanguageId; error?: string }) | null;
+  /** Latest Run/Submit against the problem's tests. */
+  tests: RunResult | null;
+  /** Latest run with custom stdin. Kept separately so neither wipes the other. */
+  custom: RunResult | null;
 };
+
+export type SharedNote = { name: string; text: string; at: number };
+
+/** Set when someone ends the interview; both browsers then show the wrap-up. */
+export type EndedState = { by: Slot; byName: string; at: number; reason: "ended" | "expired" };
 
 export type PresenceState = {
   user: { name: string; color: string; colorLight: string };
@@ -63,6 +77,7 @@ export const getSession = (doc: Y.Doc) => doc.getMap<unknown>("session");
 export const getTimer = (doc: Y.Doc) => doc.getMap<unknown>("timer");
 export const getRun = (doc: Y.Doc) => doc.getMap<unknown>("run");
 export const getWhiteboard = (doc: Y.Doc) => doc.getMap<Record<string, unknown>>("wb");
+export const getSharedNotes = (doc: Y.Doc) => doc.getMap<SharedNote>("notes");
 
 export function readSession(doc: Y.Doc) {
   const s = getSession(doc);
@@ -70,6 +85,9 @@ export function readSession(doc: Y.Doc) {
     problemSlug: (s.get("problemSlug") as string | undefined) ?? null,
     language: ((s.get("language") as LanguageId | undefined) ?? "python") as LanguageId,
     interviewerSlot: ((s.get("interviewerSlot") as Slot | undefined) ?? "a") as Slot,
+    ended: (s.get("ended") as EndedState | undefined) ?? null,
+    /** Room deadline after an extension, so the other person sees it immediately. */
+    expiresAt: (s.get("expiresAt") as number | undefined) ?? null,
   };
 }
 
@@ -90,7 +108,8 @@ export function readRun(doc: Y.Doc): RunState {
   return {
     runningBy: (r.get("runningBy") as Slot | undefined) ?? null,
     runningMode: (r.get("runningMode") as RunMode | undefined) ?? null,
-    last: (r.get("last") as RunState["last"] | undefined) ?? null,
+    tests: (r.get("tests") as RunResult | undefined) ?? null,
+    custom: (r.get("custom") as RunResult | undefined) ?? null,
   };
 }
 
@@ -151,4 +170,19 @@ export function persistOnChange(doc: Y.Doc, roomId: string): () => void {
       save();
     }
   };
+}
+
+export function encodeDoc(doc: Y.Doc): string {
+  const bin = Y.encodeStateAsUpdate(doc);
+  let out = "";
+  for (let i = 0; i < bin.length; i += 0x8000) out += String.fromCharCode(...bin.subarray(i, i + 0x8000));
+  return btoa(out);
+}
+
+export function applyEncoded(doc: Y.Doc, b64: string, origin: unknown = "server") {
+  try {
+    Y.applyUpdate(doc, Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)), origin);
+  } catch {
+    /* corrupt; ignore */
+  }
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { rateLimit, requireUser } from "@/lib/server/auth";
-import { db } from "@/lib/server/db";
+import { joinRoom } from "@/lib/server/rooms";
 import { isRoomId } from "@/lib/room-id";
 
 /**
@@ -8,7 +8,7 @@ import { isRoomId } from "@/lib/room-id";
  *  - ICE servers: short-lived (4h) Cloudflare TURN credentials, minted here so
  *    the Cloudflare API token never leaves the server.
  *  - Where the PeerJS signaling server lives.
- * Also records that this user was in this room (used to validate feedback).
+ * Also takes this user's seat in the room (two seats per room).
  */
 
 const TTL_SECONDS = 4 * 60 * 60;
@@ -81,12 +81,16 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Slow down" }, { status: 429 });
   }
 
-  db()
-    .prepare(
-      `INSERT INTO room_attendance (room_id, user_id, seen_at) VALUES (?, ?, ?)
-       ON CONFLICT (room_id, user_id) DO UPDATE SET seen_at = excluded.seen_at`,
-    )
-    .run(room, auth.id, Date.now());
+  // Takes (or refreshes) this person's seat. Rooms seat two people for their whole life.
+  const seat = joinRoom(room, auth.id);
+  if (seat !== "ok") {
+    const [error, status] = {
+      missing: ["This room doesn't exist", 404],
+      ended: ["This room has ended", 410],
+      full: ["This room already has two people", 409],
+    }[seat] as [string, number];
+    return NextResponse.json({ error, reason: seat }, { status });
+  }
 
   const ice = await cloudflareIceServers();
   return NextResponse.json(

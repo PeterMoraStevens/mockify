@@ -1,6 +1,6 @@
 "use client";
 
-import { Pause, Play, RotateCcw, TimerIcon } from "lucide-react";
+import { ChevronDown, Pause, Play, RotateCcw, TimerIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import type * as Y from "yjs";
@@ -16,7 +16,7 @@ import { useNow, useY } from "@/lib/room/hooks";
 import { getTimer, readTimer, type Slot, type TimerState } from "@/lib/room/session-doc";
 import { cn } from "@/lib/utils";
 
-const PRESETS = [15, 30, 45, 60, 90];
+const PRESETS = [15, 20, 30, 45, 60, 90];
 
 function remainingMs(t: TimerState, now: number, mySlot: Slot | null, clockOffsetMs: number) {
   if (!t.running || t.endsAt === null) return t.remainingMs;
@@ -87,6 +87,7 @@ export function Timer({
   };
 
   const progress = Math.max(0, Math.min(1, left / t.durationMs));
+  const minutes = Math.round(t.durationMs / 60000);
 
   return (
     <div className="flex items-center gap-1.5">
@@ -104,6 +105,7 @@ export function Timer({
         />
         <TimerIcon className="relative size-4" />
         <span className="relative">{fmt(left)}</span>
+        {!canControl && <span className="relative text-xs font-normal text-muted">/ {minutes}m</span>}
       </div>
       {canControl && (
         <>
@@ -116,20 +118,23 @@ export function Timer({
           </button>
           <DropdownMenu>
             <DropdownMenuTrigger
-              className="grid size-10 place-items-center rounded-base border-2 border-border bg-secondary-background shadow-shadow transition-all hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none"
-              aria-label="Timer options"
+              className="flex h-10 items-center gap-1 rounded-base border-2 border-border bg-secondary-background px-2.5 text-sm font-heading shadow-shadow transition-all hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none"
+              aria-label="Timer length"
+              title="How long the timer runs"
             >
-              <RotateCcw className="size-4" />
+              {minutes}m <ChevronDown className="size-3.5" />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="z-100" align="center">
-              <DropdownMenuItem onClick={() => reset()}>Reset to {Math.round(t.durationMs / 60000)} min</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel>Set length</DropdownMenuLabel>
+              <DropdownMenuLabel>Timer length</DropdownMenuLabel>
               {PRESETS.map((m) => (
-                <DropdownMenuItem key={m} onClick={() => reset(m)}>
+                <DropdownMenuItem key={m} onClick={() => reset(m)} className={cn(m === minutes && "bg-main/30")}>
                   {m} minutes
                 </DropdownMenuItem>
               ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => reset()}>
+                <RotateCcw /> Restart at {minutes} min
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </>

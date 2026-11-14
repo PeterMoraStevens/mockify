@@ -103,3 +103,17 @@ export function saveUploadedProblem(p: Problem) {
   fs.renameSync(tmp, file);
   invalidateProblems();
 }
+
+/** True if this slug is a problem uploaded through the UI (built-ins can't be replaced or deleted). */
+export function isUploaded(slug: string): boolean {
+  return load().get(slug)?.uploaded ?? false;
+}
+
+export function deleteUploadedProblem(slug: string) {
+  try {
+    fs.unlinkSync(path.join(UPLOAD_DIR, `${slug}.json`));
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
+  }
+  invalidateProblems();
+}

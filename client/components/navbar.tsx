@@ -1,12 +1,13 @@
 "use client";
 
-import { BookOpen, LogIn, Plus, Users } from "lucide-react";
+import { BookOpen, DoorOpen, LogIn, Plus, Users } from "lucide-react";
 import Link from "next/link";
 import { NewRoomLink } from "@/components/new-room-link";
 import { usePathname } from "next/navigation";
 import { Logo } from "./logo";
 import { ModeToggle } from "./theme-toggle";
 import { Button } from "./ui/button";
+import { InviteBadge, InviteWatcher } from "./rooms/invite-watcher";
 import { UserMenu } from "./user-menu";
 import { cn } from "@/lib/utils";
 
@@ -14,16 +15,18 @@ type NavUser = { displayName: string; username: string } | null;
 
 const LINKS = [
   { href: "/problems", label: "Problems", icon: BookOpen },
+  { href: "/rooms", label: "Rooms", icon: DoorOpen },
   { href: "/match", label: "Find a partner", icon: Users },
 ];
 
 export default function Navbar({ user }: { user: NavUser }) {
   const path = usePathname();
-  // The room has its own header.
-  if (/^\/room\/[a-z0-9]{20}/.test(path)) return null;
+  // The room has its own header (but still hears about invites).
+  if (/^\/room\/[a-z0-9]{20}/.test(path)) return user ? <InviteWatcher /> : null;
 
   return (
     <header className="sticky top-0 z-50 border-b-4 border-border bg-secondary-background">
+      {user && <InviteWatcher />}
       <nav className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:gap-4">
         <Logo />
         <div className="ml-4 hidden items-center gap-1 md:flex">
@@ -42,6 +45,7 @@ export default function Navbar({ user }: { user: NavUser }) {
               >
                 <Icon className="size-4" />
                 {label}
+                {href === "/rooms" && user && <InviteBadge />}
               </Link>
             );
           })}

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/server/auth";
-import { newRoomId } from "@/lib/room-id";
+import { createRoom } from "@/lib/server/rooms";
 
 /**
  * "Available now" matchmaking. In-memory, which is fine for one homelab
@@ -65,7 +65,8 @@ export async function POST(req: Request) {
   const partner = state.queue.find((w) => w.userId !== auth.id);
   if (partner) {
     state.queue = state.queue.filter((w) => w !== partner);
-    const roomId = newRoomId();
+    // Both seats are reserved, so nobody else can wander in with the link.
+    const roomId = createRoom(partner.userId, { members: [partner.userId, auth.id], skipLimit: true }) as string;
     const at = Date.now();
     state.matches.set(partner.userId, { roomId, partnerName: auth.displayName, at });
     state.matches.set(auth.id, { roomId, partnerName: partner.name, at });

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { problemSchema } from "@/lib/problems/schema";
-import { getProblem, listProblems, saveUploadedProblem } from "@/lib/problems/store";
+import { getProblem, isUploaded, listProblems, saveUploadedProblem } from "@/lib/problems/store";
 import { rateLimit, requireUser } from "@/lib/server/auth";
+import { db } from "@/lib/server/db";
 import { gradeAgainst } from "@/lib/server/grade";
 import { RunnerError } from "@/lib/server/piston";
 
@@ -13,7 +14,8 @@ export async function GET() {
 /**
  * Upload a problem. It must match the schema AND its reference solution must
  * pass every visible and hidden test on Piston before it's published.
- * Send `{ dryRun: true, problem }` to validate without saving.
+ * Send `{ dryRun: true, problem }` to validate without saving. Re-publishing a
+ * slug you own replaces it.
  */
 export async function POST(req: Request) {
   const auth = await requireUser();
@@ -42,7 +44,11 @@ export async function POST(req: Request) {
   const problem = parsed.data;
   const dryRun = z.boolean().catch(false).parse(raw?.dryRun);
 
-  if (!dryRun && getProblem(problem.slug)) {
+  const owner = db().prepare("SELECT owner_id FROM problem_owners WHERE slug = ?").get(problem.slug) as
+    | { owner_id: string }
+    | undefined;
+  const mine = owner?.owner_id === auth.id && isUploaded(problem.slug);
+  if (!dryRun && getProblem(problem.slug) && !mine) {
     return NextResponse.json({ error: `A problem with slug "${problem.slug}" already exists.` }, { status: 409 });
   }
 
@@ -76,6 +82,11 @@ export async function POST(req: Request) {
     );
   }
 
-  if (!dryRun) saveUploadedProblem(problem);
+  if (!dryRun) {
+    saveUploadedProblem(problem);
+    db()
+      .prepare("INSERT INTO problem_owners (slug, owner_id, created_at) VALUES (?, ?, ?) ON CONFLICT (slug) DO NOTHING")
+      .run(problem.slug, auth.id, Date.now());
+  }
   return NextResponse.json({ ok: true, published: !dryRun, slug: problem.slug, verification });
 }

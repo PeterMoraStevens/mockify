@@ -1,14 +1,19 @@
-import { UploadForm } from "@/components/problems/upload-form";
+import { Suspense } from "react";
+import { NewProblemTabs } from "@/components/problems/new-problem-tabs";
+
+export const metadata = { title: "Create a problem · Mockify" };
 
 export default function NewProblemPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-12">
-      <h1 className="text-5xl">Upload a problem</h1>
+      <h1 className="text-5xl">Create a problem</h1>
       <p className="mt-3 max-w-2xl text-muted">
-        Paste or load a problem in the JSON format below. Before it goes live, its reference solution runs on Piston against
-        every visible and hidden test. If any test fails, the problem isn&apos;t published.
+        Describe the problem, its function signature and some tests. Mockify writes the starter code for every language, and your reference
+        solution has to pass every test before it goes live. Drafts save as you type.
       </p>
-      <UploadForm />
+      <Suspense>
+        <NewProblemTabs />
+      </Suspense>
     </main>
   );
 }

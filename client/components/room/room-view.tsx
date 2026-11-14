@@ -14,29 +14,41 @@ import { Spinner } from "@/components/ui/spinner";
 import { Tabs } from "@/components/ui/tabs";
 import { LANGUAGE_IDS, LANGUAGES, SCRATCH_STARTERS, isLanguageId, type LanguageId } from "@/lib/languages";
 import type { InterviewerProblem, ProblemSummary, PublicProblem } from "@/lib/problems/schema";
+import type { EditorView } from "@codemirror/view";
 import { RoomConnection, type ConnSnapshot } from "@/lib/room/connection";
-import { useMediaQuery, useRemotePresence, useY } from "@/lib/room/hooks";
-import { blackVideoTrack, isSynthetic, stopStream } from "@/lib/room/media";
+import { useMediaQuery, useNow, useRemotePresence, useY } from "@/lib/room/hooks";
+import { blackVideoTrack, isSynthetic, saveMediaToggles, stopStream } from "@/lib/room/media";
 import {
   SLOT_COLORS,
+  applyEncoded,
+  encodeDoc,
   getCode,
   getRun,
   getSession,
+  getSharedNotes,
+  otherSlot,
   readRun,
   readSession,
   replaceCode,
   roleOf,
+  type EndedState,
   type PresenceState,
-  type RunState,
+  type RunResult,
+  type SharedNote,
 } from "@/lib/room/session-doc";
+import { ROOM_WARN_MS } from "@/lib/rooms";
 import type { RunMode, RunResponse } from "@/lib/run-types";
 import { cn } from "@/lib/utils";
 import { CodeEditor } from "./code-editor";
+import { EndConfirmDialog, WrapUpDialog } from "./conclude-dialog";
+import { InviteDialog } from "./invite-dialog";
 import { OutputPanel } from "./output-panel";
-import { ProblemPanel } from "./problem-panel";
-import type { JoinedState, RoomUser } from "./room";
+import { RemotePointer, usePointerSync } from "./pointers";
+import { ProblemPanel, type NotesProps } from "./problem-panel";
+import type { JoinedState, RoomDeadline, RoomUser } from "./room";
 import { RoomHeader } from "./room-header";
 import { VideoPanel } from "./video-panel";
+import type { BoardPointer } from "./whiteboard";
 
 const Whiteboard = dynamic(() => import("./whiteboard"), {
   ssr: false,
@@ -57,6 +69,7 @@ const INITIAL_SNAPSHOT: ConnSnapshot = {
   clockOffsetMs: 0,
 };
 const noopSubscribe = () => () => {};
+const AUTOSAVE_MS = 20_000;
 
 export type AnyProblem = PublicProblem | InterviewerProblem;
 
@@ -64,6 +77,7 @@ export function RoomView({
   roomId,
   user,
   joined,
+  deadline: initialDeadline,
   doc,
   awareness,
   onLeave,
@@ -71,6 +85,7 @@ export function RoomView({
   roomId: string;
   user: RoomUser;
   joined: JoinedState;
+  deadline: RoomDeadline;
   doc: Y.Doc;
   awareness: Awareness;
   onLeave: () => void;
@@ -143,6 +158,7 @@ export function RoomView({
     }
     t.enabled = !micOn;
     setMicOn(!micOn);
+    saveMediaToggles({ micOn: !micOn, camOn });
   };
 
   const cameraTrack = useCallback(async (): Promise<MediaStreamTrack | null> => {
@@ -177,6 +193,7 @@ export function RoomView({
   );
 
   const toggleCam = async () => {
+    saveMediaToggles({ micOn, camOn: !camOn });
     if (camOn) {
       setCamOn(false);
       if (!sharing) await swapVideo(blackVideoTrack());
@@ -224,13 +241,115 @@ export function RoomView({
     }
   };
 
-  const leave = () => {
+  const leave = (to = "/rooms") => {
+    saveNow(true);
     conn?.destroy();
     screenTrack.current?.stop();
     stopStream(joined.stream);
     onLeave();
-    router.push("/");
+    router.push(to);
   };
+
+  // ------------------------------------------------------- server autosave
+  // The server keeps a merged copy of the doc: rejoining from another browser
+  // restores it, and the interview summary shows the final code/whiteboard.
+  const dirty = useRef(false);
+  const saveNow = useCallback(
+    (beacon = false) => {
+      if (!dirty.current && !beacon) return;
+      dirty.current = false;
+      const body = JSON.stringify({ ydoc: encodeDoc(doc) });
+      if (beacon && navigator.sendBeacon?.(`/api/rooms/${roomId}/state`, body)) return;
+      fetch(`/api/rooms/${roomId}/state`, { method: "PUT", headers: { "Content-Type": "application/json" }, body })
+        .then((r) => {
+          if (!r.ok && r.status !== 410) dirty.current = true;
+        })
+        .catch(() => {
+          dirty.current = true;
+        });
+    },
+    [doc, roomId],
+  );
+  useEffect(() => {
+    const onUpdate = (_u: Uint8Array, origin: unknown) => {
+      if (origin !== "server") dirty.current = true;
+    };
+    doc.on("update", onUpdate);
+    const iv = window.setInterval(() => saveNow(), AUTOSAVE_MS);
+    const onHide = () => saveNow(true);
+    window.addEventListener("pagehide", onHide);
+    return () => {
+      doc.off("update", onUpdate);
+      window.clearInterval(iv);
+      window.removeEventListener("pagehide", onHide);
+    };
+  }, [doc, saveNow]);
+
+  // ----------------------------------------------------------------- notes
+  const [notesText, setNotesText] = useState("");
+  const [shareNotes, setShareNotes] = useState(false);
+  const [notesSaving, setNotesSaving] = useState<NotesProps["saving"]>("idle");
+  const notesLoaded = useRef(false);
+
+  // Pull the saved doc and my notes once we're in.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/rooms/${roomId}/state`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b: { ydoc: string | null; notes: string; shareNotes: boolean } | null) => {
+        if (cancelled || !b) return;
+        if (b.ydoc) applyEncoded(doc, b.ydoc, "server");
+        setNotesText((t) => t || b.notes);
+        setShareNotes(b.shareNotes);
+      })
+      .catch(() => {})
+      .finally(() => {
+        notesLoaded.current = true;
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [doc, roomId]);
+
+  const saveNotes = useCallback(
+    async (text: string, shared: boolean) => {
+      setNotesSaving("saving");
+      try {
+        const r = await fetch(`/api/rooms/${roomId}/notes`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: text, shared }),
+          keepalive: text.length < 60_000,
+        });
+        setNotesSaving(r.ok ? "saved" : "error");
+      } catch {
+        setNotesSaving("error");
+      }
+    },
+    [roomId],
+  );
+
+  useEffect(() => {
+    if (!notesLoaded.current) return;
+    const t = window.setTimeout(() => saveNotes(notesText, shareNotes), 1200);
+    return () => window.clearTimeout(t);
+  }, [notesText, shareNotes, saveNotes]);
+
+  // Shared notes are mirrored into the doc so the other person reads them live.
+  useEffect(() => {
+    const map = getSharedNotes(doc);
+    if (!shareNotes) {
+      if (map.has(user.id)) map.delete(user.id);
+      return;
+    }
+    const t = window.setTimeout(() => {
+      map.set(user.id, { name: user.displayName, text: notesText, at: Date.now() });
+    }, 500);
+    return () => window.clearTimeout(t);
+  }, [doc, shareNotes, notesText, user.id, user.displayName]);
+
+  const sharedNotes = useY(getSharedNotes(doc), () => Object.fromEntries(getSharedNotes(doc).entries()) as Record<string, SharedNote>);
+  const partnerNote = Object.entries(sharedNotes).find(([id]) => id !== user.id)?.[1] ?? null;
 
   // -------------------------------------------------------------- problems
   const [problems, setProblems] = useState<ProblemSummary[]>([]);
@@ -272,7 +391,8 @@ export function RoomView({
     if (!slug) {
       doc.transact(() => {
         getSession(doc).delete("problemSlug");
-        getRun(doc).delete("last");
+        getRun(doc).delete("tests");
+        getRun(doc).delete("custom");
       });
       return;
     }
@@ -289,7 +409,8 @@ export function RoomView({
       s.set("problemSlug", slug);
       s.set("language", lang);
       replaceCode(doc, p.starters[lang] ?? SCRATCH_STARTERS[lang]);
-      getRun(doc).delete("last");
+      getRun(doc).delete("tests");
+      getRun(doc).delete("custom");
     });
     toast.success(`Problem set: ${p.title}`);
   };
@@ -342,7 +463,7 @@ export function RoomView({
       if (mode === "custom") setOutputTab("custom");
       else setOutputTab("tests");
 
-      let last: NonNullable<RunState["last"]>;
+      let last: RunResult;
       const meta = { by: slot, byName: user.displayName, at: Date.now(), language: session.language };
       try {
         const res = await fetch("/api/run", {
@@ -364,7 +485,7 @@ export function RoomView({
         last = { mode, results: [], summary: { passed: 0, total: 0 }, error: "Network error", ...meta };
       }
       doc.transact(() => {
-        r.set("last", last);
+        r.set(last.mode === "custom" ? "custom" : "tests", last);
         r.set("runningBy", null);
         r.set("runningMode", null);
       });
@@ -401,29 +522,157 @@ export function RoomView({
     prevRole.current = role;
   }, [role]);
 
+  // ------------------------------------------------------- room deadline
+  const [deadline, setDeadline] = useState(initialDeadline);
+  // An extension by the other person arrives through the doc right away…
+  const expiresAt = Math.max(deadline.expiresAt, session.expiresAt ?? 0);
+  // …and from the server every so often, in case the doc missed it.
+  useEffect(() => {
+    const iv = window.setInterval(async () => {
+      const r = await fetch(`/api/rooms/${roomId}`, { cache: "no-store" }).catch(() => null);
+      if (!r?.ok) return;
+      const b = (await r.json()) as { expiresAt: number; maxExpiresAt: number };
+      setDeadline({ expiresAt: b.expiresAt, maxExpiresAt: b.maxExpiresAt });
+    }, 30_000);
+    return () => window.clearInterval(iv);
+  }, [roomId]);
+
+  const extend = async (minutes: number) => {
+    const r = await fetch(`/api/rooms/${roomId}/extend`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ minutes }),
+    });
+    const b = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      toast.error(b.error ?? "Couldn't extend the room");
+      return;
+    }
+    setDeadline({ expiresAt: b.expiresAt, maxExpiresAt: b.maxExpiresAt });
+    getSession(doc).set("expiresAt", b.expiresAt);
+    toast.success(`Room extended by ${minutes} minutes`);
+  };
+
+  // ------------------------------------------------------------ wrap-up
+  const ended: EndedState | null = session.ended;
+  const [confirmEnd, setConfirmEnd] = useState(false);
+  const [ending, setEnding] = useState(false);
+  const [lastPartner, setLastPartner] = useState<string | null>(null);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- remember who we were with after they leave
+    if (remote) setLastPartner(remote.user.name);
+  }, [remote]);
+  const partnerName = remote?.user.name ?? lastPartner;
+
+  const endInterview = useCallback(
+    async (reason: EndedState["reason"]) => {
+      if (!slot) return;
+      setEnding(true);
+      saveNow(true);
+      await fetch(`/api/rooms/${roomId}/conclude`, { method: "POST" }).catch(() => {});
+      getSession(doc).set("ended", { by: slot, byName: user.displayName, at: Date.now(), reason } satisfies EndedState);
+      setEnding(false);
+      setConfirmEnd(false);
+    },
+    [slot, saveNow, roomId, doc, user.displayName],
+  );
+
+  const finish = async () => {
+    await saveNotes(notesText, shareNotes);
+    leave(`/interviews/${roomId}`);
+  };
+
+  // ------------------------------------------------------ invite + pointers
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [editorView, setEditorView] = useState<EditorView | null>(null);
+  const remotePtr = usePointerSync(conn, editorView);
+  const remoteColor = slot ? SLOT_COLORS[otherSlot(slot)].color : "#888";
+  const [boardPtr, setBoardPtr] = useState<BoardPointer | null>(null);
+  useEffect(() => {
+    if (!conn) return;
+    return conn.onEphemeral((m) => {
+      if (m.k !== "ptr") return;
+      // Pointer moved to another panel: drop it from the board.
+      if (m.panel !== "board-scene") setBoardPtr(null);
+    });
+  }, [conn]);
+  useEffect(() => {
+    if (!conn) return;
+    return conn.onEphemeral((m) => {
+      if (m.k === "ptr" && m.panel === "board-scene") {
+        setBoardPtr({ x: m.x, y: m.y, name: remote?.user.name ?? "Partner", color: remoteColor });
+      }
+    });
+  }, [conn, remote?.user.name, remoteColor]);
+  const sendBoardPointer = useCallback(
+    (p: { x: number; y: number } | null) => {
+      if (!conn) return;
+      conn.sendEphemeral(p ? { k: "ptr", panel: "board-scene", x: p.x, y: p.y } : { k: "ptr", panel: null });
+    },
+    [conn],
+  );
+
   // ---------------------------------------------------------------- layout
   const [centerTab, setCenterTab] = useState<"code" | "board">("code");
   const ytext = useMemo(() => getCode(doc), [doc]);
 
   if (snap.status === "full" || snap.status === "error") {
-    return <BlockingMessage status={snap.status} error={snap.error} onLeave={leave} />;
+    return <BlockingMessage status={snap.status} error={snap.error} onLeave={() => leave("/rooms")} />;
   }
+
+  const notes: NotesProps = {
+    text: notesText,
+    onText: setNotesText,
+    shared: shareNotes,
+    onShared: setShareNotes,
+    saving: notesSaving,
+    partnerNote,
+  };
 
   const header = (
     <RoomHeader
-      roomId={roomId}
       doc={doc}
       snap={snap}
       role={role}
-      remote={remote}
+      deadline={{ expiresAt, maxExpiresAt: deadline.maxExpiresAt }}
+      onExtend={extend}
       onSwap={swapRoles}
-      onLeave={leave}
-      feedback={
-        isInterviewer && remote
-          ? { roomId, candidateId: remote.userId, candidateName: remote.user.name, problemSlug: session.problemSlug }
-          : null
-      }
+      onInvite={() => setInviteOpen(true)}
+      onEnd={() => setConfirmEnd(true)}
+      onLeave={() => leave()}
     />
+  );
+
+  const overlays = (
+    <>
+      <RemotePointer
+        ptr={remotePtr && remotePtr.panel !== "board-scene" ? remotePtr : null}
+        editor={editorView}
+        name={remote?.user.name ?? "Partner"}
+        color={remoteColor}
+      />
+      <InviteDialog roomId={roomId} open={inviteOpen} onClose={() => setInviteOpen(false)} />
+      <EndConfirmDialog
+        open={confirmEnd && !ended}
+        onClose={() => setConfirmEnd(false)}
+        onConfirm={() => endInterview("ended")}
+        busy={ending}
+        partnerName={partnerName}
+      />
+      {!ended && slot && <DeadlineWatcher expiresAt={expiresAt} onExpire={() => endInterview("expired")} />}
+      {ended && (
+        <WrapUpDialog
+          roomId={roomId}
+          ended={ended}
+          role={role}
+          partnerName={partnerName}
+          problemSlug={session.problemSlug}
+          shareNotes={shareNotes}
+          onShareNotes={setShareNotes}
+          onFinish={finish}
+        />
+      )}
+    </>
   );
 
   const editorToolbar = (
@@ -477,17 +726,24 @@ export function RoomView({
         ]}
         right={centerTab === "code" ? editorToolbar : undefined}
       />
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1" data-pointer-panel={centerTab === "code" ? "editor" : "board"}>
         {centerTab === "code" ? (
-          <CodeEditor ytext={ytext} awareness={awareness} language={session.language} readOnly={!slot} />
+          <CodeEditor
+            ytext={ytext}
+            awareness={awareness}
+            language={session.language}
+            readOnly={!slot || !!ended}
+            onView={setEditorView}
+          />
         ) : (
-          <Whiteboard doc={doc} />
+          <Whiteboard doc={doc} onPointer={sendBoardPointer} remotePointer={boardPtr} />
         )}
       </div>
     </section>
   );
 
   const output = (
+    <div className="h-full" data-pointer-panel="output">
     <OutputPanel
       run={run}
       slot={slot}
@@ -499,11 +755,13 @@ export function RoomView({
       hasProblem={!!session.problemSlug}
       runnerName={otherRunning ? remote?.user.name : user.displayName}
     />
+    </div>
   );
 
   const problemPanel = (
+    <div className="h-full" data-pointer-panel="problem">
     <ProblemPanel
-      roomId={roomId}
+      notes={notes}
       problem={problem}
       problems={problems}
       isInterviewer={isInterviewer}
@@ -511,6 +769,7 @@ export function RoomView({
       onPick={pickProblem}
       remoteName={remote?.user.name ?? null}
     />
+    </div>
   );
 
   const video = (
@@ -527,7 +786,8 @@ export function RoomView({
       onMic={toggleMic}
       onCam={toggleCam}
       onShare={toggleShare}
-      onLeave={leave}
+      onLeave={() => leave()}
+      onInvite={() => setInviteOpen(true)}
       compact={!wide}
     />
   );
@@ -542,6 +802,7 @@ export function RoomView({
           <div className="h-[70vh]">{editorArea}</div>
           <div className="h-[50vh]">{output}</div>
         </div>
+        {overlays}
       </div>
     );
   }
@@ -567,9 +828,12 @@ export function RoomView({
         </Panel>
         <ResizeHandle />
         <Panel defaultSize="22%" minSize="16%" maxSize="40%">
-          {video}
+          <div className="h-full" data-pointer-panel="video">
+            {video}
+          </div>
         </Panel>
       </Group>
+      {overlays}
     </div>
   );
 }
@@ -624,4 +888,29 @@ function BlockingMessage({
       </div>
     </div>
   );
+}
+
+/** Warns before the room closes, then ends the interview when time runs out. Own component so the per-second tick doesn't re-render the room. */
+function DeadlineWatcher({ expiresAt, onExpire }: { expiresAt: number; onExpire: () => void }) {
+  const now = useNow(1_000);
+  const leftMs = expiresAt - now;
+  const warned = useRef<{ five: boolean; one: boolean }>({ five: false, one: false });
+  const fired = useRef(false);
+  useEffect(() => {
+    if (leftMs <= ROOM_WARN_MS && leftMs > 60_000 && !warned.current.five) {
+      warned.current.five = true;
+      toast.warning("This room closes in 5 minutes. Extend it from the Room menu if you need more time.");
+    }
+    if (leftMs <= 60_000 && leftMs > 0 && !warned.current.one) {
+      warned.current.one = true;
+      toast.warning("This room closes in 1 minute.");
+    }
+    if (leftMs > ROOM_WARN_MS) warned.current = { five: false, one: false };
+    if (leftMs <= 0 && !fired.current) {
+      fired.current = true;
+      // Deferred: ending updates state, which shouldn't happen synchronously in an effect.
+      void Promise.resolve().then(onExpire);
+    }
+  }, [leftMs, onExpire]);
+  return null;
 }

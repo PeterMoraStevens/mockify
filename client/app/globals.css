@@ -234,15 +234,26 @@
 .cm-scroller {
   font-family: var(--font-geist-mono) !important;
 }
-.cm-ySelectionInfo {
-  font-family: var(--font-geist-sans);
-  font-weight: 700;
+/* y-codemirror's own theme sets a serif font with higher specificity. */
+.cm-host .cm-ySelectionInfo {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em;
+  line-height: 1.2 !important;
   border-radius: 3px 3px 3px 0;
-  padding: 1px 4px !important;
-  opacity: 1 !important;
-  top: -1.3em !important;
-  color: #000;
+  padding: 1px 5px !important;
+  top: -1.45em !important;
+  color: #000 !important;
   border: 1.5px solid #000;
+  opacity: 0 !important;
+  transition: opacity 0.4s ease !important;
+}
+/* Visible while the other person's cursor is moving, and on hover. */
+.cm-host[data-flags] .cm-ySelectionInfo,
+.cm-host .cm-ySelectionCaret:hover > .cm-ySelectionInfo {
+  opacity: 1 !important;
+  transition-duration: 0.1s !important;
 }
 
 /* --------------------------------------------------------- excalidraw */

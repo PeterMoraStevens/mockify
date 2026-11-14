@@ -6,7 +6,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Tabs } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { LANGUAGES } from "@/lib/languages";
-import type { RunState, Slot } from "@/lib/room/session-doc";
+import type { RunResult, RunState, Slot } from "@/lib/room/session-doc";
 import type { TestResult } from "@/lib/run-types";
 import { cn } from "@/lib/utils";
 
@@ -31,9 +31,8 @@ export function OutputPanel({
   hasProblem: boolean;
   runnerName?: string;
 }) {
-  const last = run.last;
-  const summary =
-    last && !last.error && !last.compileError && last.mode !== "custom" ? last.summary : null;
+  const tests = run.tests;
+  const summary = tests && !tests.error && !tests.compileError ? tests.summary : null;
   const allPass = summary && summary.total > 0 && summary.passed === summary.total;
 
   return (
@@ -74,8 +73,7 @@ export function OutputPanel({
   );
 }
 
-function RunMeta({ run, slot }: { run: RunState; slot: Slot | null }) {
-  const last = run.last!;
+function RunMeta({ last, slot }: { last: RunResult; slot: Slot | null }) {
   return (
     <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted">
       <span className="rounded-sm border-2 border-border bg-background px-1.5 font-heading uppercase text-foreground">
@@ -99,7 +97,7 @@ function ErrorBlock({ title, body }: { title: string; body: string }) {
 }
 
 function TestsView({ run, slot }: { run: RunState; slot: Slot | null }) {
-  const last = run.last && run.last.mode !== "custom" ? run.last : null;
+  const last = run.tests;
   if (!last) {
     return (
       <Empty>
@@ -111,7 +109,7 @@ function TestsView({ run, slot }: { run: RunState; slot: Slot | null }) {
   if (last.compileError) {
     return (
       <div className="p-4">
-        <RunMeta run={run} slot={slot} />
+        <RunMeta last={last} slot={slot} />
         <ErrorBlock title="Compilation error" body={last.compileError} />
       </div>
     );
@@ -121,7 +119,7 @@ function TestsView({ run, slot }: { run: RunState; slot: Slot | null }) {
   const hidden = last.results.filter((r) => r.kind === "hidden");
   return (
     <div className="p-4">
-      <RunMeta run={run} slot={slot} />
+      <RunMeta last={last} slot={slot} />
       <div className="space-y-2">
         {examples.map((r) => (
           <ExampleResult key={r.index} r={r} defaultOpen={!r.passed} />
@@ -215,7 +213,7 @@ function CustomView({
   onStdin: (s: string) => void;
   hasProblem: boolean;
 }) {
-  const last = run.last && run.last.mode === "custom" ? run.last : null;
+  const last = run.custom;
   const c = last?.custom;
   return (
     <div className="grid h-full gap-3 p-4 md:grid-cols-2">

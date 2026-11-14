@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, LogOut, Upload, User, Users } from "lucide-react";
+import { BookOpen, DoorOpen, Library, LogOut, Upload, User, UserPlus, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -38,6 +38,16 @@ export function UserMenu({ displayName, username }: { displayName: string; usern
             <User /> Profile &amp; feedback
           </Link>
         </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/friends">
+            <UserPlus /> Friends
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className="md:hidden">
+          <Link href="/rooms">
+            <DoorOpen /> Your rooms
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem asChild className="md:hidden">
           <Link href="/problems">
             <BookOpen /> Problems
@@ -50,7 +60,12 @@ export function UserMenu({ displayName, username }: { displayName: string; usern
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/problems/new">
-            <Upload /> Upload a problem
+            <Upload /> Create a problem
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/problems/library">
+            <Library /> Your problems &amp; drafts
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
