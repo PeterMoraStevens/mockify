@@ -25,7 +25,7 @@ export type Signature = { params: Param[]; returns: TypeName };
 export type ParamType = TypeName;
 export type ReturnType = TypeName;
 
-export const MAX_PARAM_DEPTH = 3;
+export const MAX_PARAM_DEPTH = 4;
 export const MAX_RETURN_DEPTH = 2;
 
 type T = { base: BaseType; depth: number };
@@ -208,6 +208,12 @@ export function formatOutput(type: TypeName, out: string): string {
   const row = (l: string) => `[${(l.trim() ? l.trim().split(/\s+/) : []).map(show).join(",")}]`;
   if (depth === 1) return row(text);
   return `[${(text ? text.split("\n") : []).map(row).join(",")}]`;
+}
+
+/** "nums = [2,7,11,15]", one line per parameter, from a test's raw stdin. */
+export function readableInput(sig: Signature, input: string): string {
+  const lines = input.replace(/\n$/, "").split("\n");
+  return sig.params.map((p, i) => `${p.name} = ${formatValue(p.type, lines[i] ?? "")}`).join("\n");
 }
 
 /** What the builder shows for a saved stdin line (nested arrays become JSON; the rest stays as-is). */

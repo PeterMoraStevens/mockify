@@ -72,35 +72,46 @@ const placeholder = (type: string) => {
   return BASE_PLACEHOLDER[t.base][Math.min(t.depth, 2)];
 };
 
-/** Base type + "array of" depth, e.g. string + 2 = string[][]. */
-function TypePicker({ value, onChange, maxDepth }: { value: string; onChange: (t: string) => void; maxDepth: number }) {
+const BASE_NAMES: Record<BaseType, string> = { int: "int", long: "long (64-bit)", bool: "bool", string: "string" };
+
+/**
+ * A type built one step at a time: each dropdown is either a data type or
+ * "array of…", and choosing "array of…" opens another dropdown for what the
+ * array holds. So int[][] is: array of… → array of… → int.
+ */
+function TypePicker({ value, onChange, maxDepth, label }: { value: string; onChange: (t: string) => void; maxDepth: number; label: string }) {
   const t = parseType(value) ?? { base: "int" as BaseType, depth: 0 };
   return (
-    <div className="flex shrink-0 gap-1.5">
-      <Select value={String(t.depth)} onValueChange={(d) => onChange(makeType(t.base, Number(d)))}>
-        <SelectTrigger className="w-36" aria-label="Array depth">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {Array.from({ length: maxDepth + 1 }, (_, d) => (
-            <SelectItem key={d} value={String(d)}>
-              {d === 0 ? "single value" : d === 1 ? "array of" : `${"array of ".repeat(d).trim()}`}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Select value={t.base} onValueChange={(b) => onChange(makeType(b as BaseType, t.depth))}>
-        <SelectTrigger className="w-32" aria-label="Element type">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {BASE_TYPES.map((b) => (
-            <SelectItem key={b} value={b}>
-              {b === "int" ? "int" : b === "long" ? "long (64-bit)" : b === "bool" ? "bool" : "string"}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5" aria-label={`${label} type`} role="group">
+      {Array.from({ length: t.depth + 1 }, (_, level) => {
+        const isArray = level < t.depth;
+        return (
+          <div key={level} className="flex items-center gap-1.5">
+            {level > 0 && <span className="text-xs text-muted" aria-hidden>→</span>}
+            <Select
+              value={isArray ? "array" : t.base}
+              onValueChange={(v) =>
+                onChange(v === "array" ? makeType(t.base, level + 1) : makeType(v as BaseType, level))
+              }
+            >
+              <SelectTrigger className="h-9 w-32" aria-label={level === 0 ? `${label} type` : `${label} element type, level ${level}`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {BASE_TYPES.map((b) => (
+                  <SelectItem key={b} value={b}>
+                    {BASE_NAMES[b]}
+                  </SelectItem>
+                ))}
+                <SelectItem value="array" disabled={level >= maxDepth}>
+                  array of…{level >= maxDepth ? " (max depth)" : ""}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        );
+      })}
+      <code className="ml-1 rounded-base border-2 border-border bg-background px-1.5 py-0.5 font-mono text-xs">{value}</code>
     </div>
   );
 }
@@ -409,19 +420,20 @@ export function ProblemBuilder() {
           </p>
           <div className="space-y-2">
             {s.signature.params.map((p, i) => (
-              <div key={i} className="flex items-center gap-2">
+              <div key={i} className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
                 <span className="w-16 shrink-0 text-xs font-heading text-muted">Line {i + 1}</span>
                 <Input
                   value={p.name}
                   onChange={(e) =>
                     setSignature({ ...s.signature, params: s.signature.params.map((q, j) => (j === i ? { ...q, name: e.target.value.replace(/[^A-Za-z0-9]/g, "") } : q)) })
                   }
-                  className="font-mono"
+                  className="w-36 shrink-0 font-mono"
                   placeholder="nums"
                   maxLength={30}
                 />
                 <TypePicker
                   value={p.type}
+                  label={p.name || `Parameter ${i + 1}`}
                   maxDepth={MAX_PARAM_DEPTH}
                   onChange={(v) => setSignature({ ...s.signature, params: s.signature.params.map((q, j) => (j === i ? { ...q, type: v } : q)) })}
                 />
@@ -445,9 +457,9 @@ export function ProblemBuilder() {
               <Plus /> Add parameter
             </Button>
           </div>
-          <div className="mt-5 grid gap-4 sm:grid-cols-[300px_1fr]">
+          <div className="mt-5 grid gap-4">
             <Field label="Returns">
-              <TypePicker value={s.signature.returns} maxDepth={MAX_RETURN_DEPTH} onChange={(v) => setSignature({ ...s.signature, returns: v })} />
+              <TypePicker value={s.signature.returns} label="Return" maxDepth={MAX_RETURN_DEPTH} onChange={(v) => setSignature({ ...s.signature, returns: v })} />
               <p className="mt-1 text-xs text-muted">{typeLabel(s.signature.returns)}</p>
             </Field>
             <Field label="What solve() returns" hint="One sentence, shown as a comment in the starter code.">

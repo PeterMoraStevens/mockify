@@ -1,9 +1,10 @@
 "use client";
 
-import { ArrowRight, Clock, DoorOpen, FileText, History, Inbox, PenTool, Plus, X } from "lucide-react";
+import { ArrowRight, Clock, DoorOpen, FileText, History, Inbox, Plus, Power, X } from "lucide-react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NewRoomLink } from "@/components/new-room-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -53,24 +54,17 @@ export function RoomsClient({
             Rejoin a room that&apos;s still open, or look back at past interviews. You can have {maxOpen} open rooms at a time.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild disabled={openMine >= maxOpen}>
-            <NewRoomLink>
-              <Plus /> Coding interview
-            </NewRoomLink>
-          </Button>
-          <Button asChild variant="neutral" disabled={openMine >= maxOpen}>
-            <NewRoomLink mode="design" title="Whiteboard-only room. You can switch to coding later.">
-              <PenTool /> System design
-            </NewRoomLink>
-          </Button>
-        </div>
+        <Button asChild disabled={openMine >= maxOpen}>
+          <NewRoomLink>
+            <Plus /> New room
+          </NewRoomLink>
+        </Button>
       </div>
 
       {limitHit && (
         <div className="mt-6 rounded-base border-2 border-border bg-accent-yellow p-4 text-sm text-black shadow-shadow">
-          <span className="font-heading">You already have {maxOpen} open rooms.</span> Rejoin one of them below, or end one
-          (End interview, inside the room) before starting another.
+          <span className="font-heading">You already have {maxOpen} open rooms.</span> Close one below (or end it from inside the
+          room) before starting another.
         </div>
       )}
 
@@ -114,6 +108,7 @@ export function RoomsClient({
                   {new Date(r.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                 </div>
               </div>
+              <CloseRoomButton id={r.id} onClosed={() => router.refresh()} />
               <Button size="sm" asChild>
                 <Link href={`/room/${r.id}`}>
                   Rejoin <ArrowRight />
@@ -171,4 +166,36 @@ function Card({ children, tone = "bg-secondary-background" }: { children: React.
 
 function Empty({ children }: { children: React.ReactNode }) {
   return <div className="rounded-base border-2 border-dashed border-border p-6 text-center text-sm text-muted">{children}</div>;
+}
+
+/** Ends the room for everyone (the summary stays). Click twice: the first click asks. */
+function CloseRoomButton({ id, onClosed }: { id: string; onClosed: () => void }) {
+  const [armed, setArmed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (!armed) return;
+    const t = window.setTimeout(() => setArmed(false), 4000);
+    return () => window.clearTimeout(t);
+  }, [armed]);
+  const close = async () => {
+    if (!armed) return setArmed(true);
+    setBusy(true);
+    const r = await fetch(`/api/rooms/${id}`, { method: "DELETE" }).catch(() => null);
+    setBusy(false);
+    if (!r?.ok) return void toast.error("Couldn't close the room");
+    toast.success("Room closed");
+    onClosed();
+  };
+  return (
+    <Button
+      size="sm"
+      variant="neutral"
+      onClick={close}
+      disabled={busy}
+      className={armed ? "bg-accent-red text-black" : undefined}
+      title="Close this room for everyone. Its code, notes and reviews stay under Past interviews."
+    >
+      <Power /> {armed ? "Close it?" : "Close"}
+    </Button>
+  );
 }

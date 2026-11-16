@@ -42,7 +42,7 @@ export function openRoomCount(userId: string): number {
 /** Creates a room. Matchmaking passes both people so nobody else can take a seat. */
 export function createRoom(
   userId: string,
-  opts: { members?: string[]; skipLimit?: boolean; mode?: RoomMode } = {},
+  opts: { members?: string[]; skipLimit?: boolean; mode?: RoomMode; lengthMs?: number } = {},
 ): string | "limit" {
   return tx(() => {
     if (!opts.skipLimit && openRoomCount(userId) >= MAX_OPEN_ROOMS) return "limit";
@@ -50,7 +50,7 @@ export function createRoom(
     const now = Date.now();
     db()
       .prepare("INSERT INTO rooms (id, created_by, created_at, expires_at, mode) VALUES (?, ?, ?, ?, ?)")
-      .run(id, userId, now, now + ROOM_DEFAULT_MS, opts.mode ?? "coding");
+      .run(id, userId, now, now + Math.min(opts.lengthMs ?? ROOM_DEFAULT_MS, ROOM_MAX_MS), opts.mode ?? "coding");
     const add = db().prepare("INSERT OR IGNORE INTO room_attendance (room_id, user_id, seen_at, joined_at) VALUES (?, ?, ?, ?)");
     for (const m of opts.members ?? []) add.run(id, m, now, now);
     return id;

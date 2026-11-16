@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // Cheap cookie-presence gate for pages. Real session validation happens in
 // server components and every API route via requireUser().
-const PROTECTED = ["/room", "/rooms", "/friends", "/interviews", "/match", "/profile", "/problems/new", "/problems/library"];
+const PROTECTED = ["/room", "/rooms", "/friends", "/interviews", "/profile", "/problems/new", "/problems/library"];
 
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
@@ -31,5 +31,5 @@ function publicOrigin(request: NextRequest): string {
 }
 
 export const config = {
-  matcher: ["/room/:path*", "/rooms", "/friends", "/interviews/:path*", "/match", "/profile", "/problems/new", "/problems/library"],
+  matcher: ["/room/:path*", "/rooms", "/friends", "/interviews/:path*", "/profile", "/problems/new", "/problems/library"],
 };

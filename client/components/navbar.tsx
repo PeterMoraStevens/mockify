@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, DoorOpen, LogIn, Plus, Users } from "lucide-react";
+import { BookOpen, DoorOpen, LogIn, Plus } from "lucide-react";
 import Link from "next/link";
 import { NewRoomLink } from "@/components/new-room-link";
 import { usePathname } from "next/navigation";
@@ -16,7 +16,6 @@ type NavUser = { displayName: string; username: string } | null;
 const LINKS = [
   { href: "/problems", label: "Problems", icon: BookOpen },
   { href: "/rooms", label: "Rooms", icon: DoorOpen },
-  { href: "/match", label: "Find a partner", icon: Users },
 ];
 
 export default function Navbar({ user }: { user: NavUser }) {

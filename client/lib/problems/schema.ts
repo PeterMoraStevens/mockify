@@ -24,7 +24,8 @@ export const problemSchema = z
       .string()
       .min(3)
       .max(64)
-      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "lowercase letters, digits and single dashes only"),
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "lowercase letters, digits and single dashes only")
+      .refine((s) => s !== "new" && s !== "library", "That URL name is reserved"),
     title: z.string().min(3).max(120),
     difficulty: z.enum(["easy", "medium", "hard"]),
     tags: z.array(z.string().min(1).max(32)).max(10).default([]),

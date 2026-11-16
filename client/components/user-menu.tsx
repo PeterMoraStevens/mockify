@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, DoorOpen, Library, LogOut, Upload, User, UserPlus, Users } from "lucide-react";
+import { BookOpen, DoorOpen, Library, LogOut, Upload, User, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -51,11 +51,6 @@ export function UserMenu({ displayName, username }: { displayName: string; usern
         <DropdownMenuItem asChild className="md:hidden">
           <Link href="/problems">
             <BookOpen /> Problems
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className="md:hidden">
-          <Link href="/match">
-            <Users /> Find a partner
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>

@@ -21,7 +21,7 @@ export default function ProblemsPage() {
         <div>
           <h1 className="text-5xl">Problem set</h1>
           <p className="mt-3 max-w-xl text-muted">
-            Plain stdin/stdout problems that work in every Piston language. The interviewer picks one inside the room. Hidden tests stay on the server.
+            Plain stdin/stdout problems that work in every Piston language. Open one to read it, reveal hints, and practice on your own. In a room, the interviewer picks one. Hidden tests stay on the server.
           </p>
         </div>
         <div className="flex gap-2">
@@ -59,12 +59,14 @@ export default function ProblemsPage() {
         )}
         <ul className="divide-y-2 divide-border">
           {problems.map((p, i) => (
-            <li key={p.slug} className="flex flex-wrap items-center gap-4 px-5 py-4 transition-colors hover:bg-background">
+            <li key={p.slug} className="relative flex flex-wrap items-center gap-4 px-5 py-4 transition-colors hover:bg-background">
               <span className="w-8 font-mono text-sm text-muted">{String(i + 1).padStart(2, "0")}</span>
               <FileCode2 className="size-5 shrink-0" />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-heading">{p.title}</span>
+                  <Link href={`/problems/${p.slug}`} className="font-heading after:absolute after:inset-0 hover:underline">
+                    {p.title}
+                  </Link>
                   {p.uploaded && <Badge tone="violet">community</Badge>}
                 </div>
                 <div className="mt-1 flex flex-wrap gap-1.5">

@@ -4,6 +4,8 @@ export const ROOM_DEFAULT_MS = 60 * 60_000;
 /** Hard cap on a room's lifetime, extensions included. */
 export const ROOM_MAX_MS = 3 * 60 * 60_000;
 export const ROOM_EXTEND_OPTIONS_MIN = [15, 30] as const;
+/** Lengths offered when creating a room (it can be extended later, up to ROOM_MAX_MS). */
+export const ROOM_LENGTH_OPTIONS_MIN = [30, 45, 60, 90, 120] as const;
 /** Open (not ended, not expired) rooms one person can have created at once. */
 export const MAX_OPEN_ROOMS = 3;
 /** Reviews can still be left this long after a room ends. */

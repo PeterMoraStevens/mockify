@@ -1,19 +1,20 @@
 import { ArrowRight, BookOpenCheck, Code2, MessageSquareText, Play, RotateCcw, Users } from "lucide-react";
+import { Shapes } from "@/components/landing/shapes";
 import Link from "next/link";
 import { NewRoomLink } from "@/components/new-room-link";
 import { Button } from "@/components/ui/button";
 import { Highlighter } from "@/components/ui/highlighter";
 
 const FEATURES = [
-  { icon: Users, title: "Practice together", body: "Send a link, or get paired with whoever's free. Swap roles whenever you like.", tone: "bg-accent-blue" },
+  { icon: Users, title: "Practice together", body: "Invite a friend or send a link. Swap roles whenever you like.", tone: "bg-accent-blue" },
   { icon: Code2, title: "Real problems", body: "Run code and check it against hidden tests, in the language you're interviewing in.", tone: "bg-main" },
   { icon: MessageSquareText, title: "Honest feedback", body: "Wrap up by rating each other, and track how you improve over time.", tone: "bg-accent-green" },
   { icon: RotateCcw, title: "Pick up where you left off", body: "Rejoin a room anytime it's open, and look back at past code, notes and whiteboards.", tone: "bg-accent-yellow" },
 ];
 
 const STEPS = [
-  { title: "Open a room", body: "Pick coding or system design. You get a link that's good for an hour.", tone: "bg-main" },
-  { title: "Bring a partner", body: "Invite a friend, send the link, or get matched with someone free.", tone: "bg-accent-blue" },
+  { title: "Open a room", body: "Pick coding or system design and how long you need, then share the link.", tone: "bg-main" },
+  { title: "Bring a partner", body: "Invite a friend from the app, or send them the link.", tone: "bg-accent-blue" },
   { title: "Interview, then review", body: "Solve it together, then rate each other and keep the notes.", tone: "bg-accent-green" },
 ];
 
@@ -45,13 +46,15 @@ export default function Home() {
                 </NewRoomLink>
               </Button>
               <Button asChild size="lg" variant="neutral" className="h-14 px-7 text-base font-heading">
-                <Link href="/match">
-                  Find a partner <Users className="size-5!" />
+                <Link href="/problems">
+                  Browse problems <BookOpenCheck className="size-5!" />
                 </Link>
               </Button>
             </div>
           </div>
-          <ol className="grid gap-4">
+          <div className="relative">
+            <Shapes variant="hero" />
+          <ol className="relative grid gap-4">
             {STEPS.map((step, i) => (
               <li
                 key={step.title}
@@ -68,13 +71,16 @@ export default function Home() {
               </li>
             ))}
           </ol>
+          </div>
         </div>
       </section>
 
       {/* ----------------------------------------------------- features */}
       <section className="mx-auto max-w-7xl px-4 py-20">
         <SectionTitle kicker="What you get" title="Everything a practice interview needs." />
-        <div className="mt-10 grid gap-5 sm:grid-cols-2">
+        <div className="relative mt-10">
+          <Shapes variant="features" />
+        <div className="relative grid gap-5 sm:grid-cols-2">
           {FEATURES.map(({ icon: Icon, title, body, tone }) => (
             <div key={title} className="rounded-base border-2 border-border bg-secondary-background p-5 shadow-shadow">
               <span className={`grid size-11 place-items-center rounded-base border-2 border-border text-black ${tone}`}>
@@ -85,6 +91,7 @@ export default function Home() {
             </div>
           ))}
         </div>
+        </div>
       </section>
 
       {/* ---------------------------------------------------------- cta */}
@@ -92,9 +99,11 @@ export default function Home() {
         <div className="relative overflow-hidden rounded-base border-4 border-border bg-main p-8 text-main-foreground shadow-xl sm:p-12">
           <div className="absolute -right-10 -top-10 size-48 rotate-12 rounded-base border-4 border-border bg-accent-yellow" aria-hidden />
           <div className="absolute -bottom-12 right-32 size-28 -rotate-6 rounded-full border-4 border-border bg-accent-blue" aria-hidden />
+          <div className="absolute bottom-10 right-72 hidden size-16 rotate-45 border-4 border-border bg-accent-green lg:block" aria-hidden />
+          <div className="absolute right-[22rem] top-8 hidden h-4 w-40 -rotate-6 border-4 border-border bg-secondary-background lg:block" aria-hidden />
           <div className="relative max-w-2xl">
             <h2 className="text-4xl sm:text-5xl">Your next interview is one link away.</h2>
-            <p className="mt-4 text-lg">Open a room and send the link, or join the queue to meet someone new.</p>
+            <p className="mt-4 text-lg">Open a room, pick your options, and invite a friend or send the link.</p>
             <div className="mt-8 flex flex-wrap gap-4">
               <Button asChild size="lg" variant="neutral" className="h-13 px-6 font-heading">
                 <NewRoomLink>

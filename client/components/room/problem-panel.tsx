@@ -16,7 +16,7 @@ import {
 import { Tabs } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { InterviewerProblem, ProblemSummary } from "@/lib/problems/schema";
-import { formatOutput, formatValue, type Signature } from "@/lib/problems/starters";
+import { formatOutput, readableInput } from "@/lib/problems/starters";
 import type { SharedNote } from "@/lib/room/session-doc";
 import { cn } from "@/lib/utils";
 import type { AnyProblem } from "./room-view";
@@ -212,12 +212,6 @@ function ProblemTab({
       </p>
     </article>
   );
-}
-
-/** "nums = [2,7,11,15]" per parameter, from the raw stdin lines. */
-function readableInput(sig: Signature, input: string): string {
-  const lines = input.replace(/\n$/, "").split("\n");
-  return sig.params.map((p, i) => `${p.name} = ${formatValue(p.type, lines[i] ?? "")}`).join("\n");
 }
 
 function IO({ label, value }: { label: string; value: string }) {

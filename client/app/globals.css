@@ -141,6 +141,12 @@
     background-size: 18px 18px;
   }
 
+  /* Bold diagonal hazard stripes for decorative blocks. */
+  .bg-stripes {
+    background-color: var(--secondary-background);
+    background-image: repeating-linear-gradient(-45deg, var(--border) 0 6px, transparent 6px 16px);
+  }
+
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
