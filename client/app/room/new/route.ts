@@ -6,10 +6,11 @@ import { createRoom } from "@/lib/server/rooms";
 const redirect = (to: string) =>
   new Response(null, { status: 303, headers: { Location: to, "Cache-Control": "no-store" } });
 
-export async function GET() {
+export async function GET(req: Request) {
+  const mode = new URL(req.url).searchParams.get("mode") === "design" ? "design" : "coding";
   const user = await getCurrentUser();
-  if (!user) return redirect("/login?next=/room/new");
-  const id = createRoom(user.id);
+  if (!user) return redirect(`/login?next=${encodeURIComponent(`/room/new${mode === "design" ? "?mode=design" : ""}`)}`);
+  const id = createRoom(user.id, { mode });
   if (id === "limit") return redirect("/rooms?limit=1");
   return redirect(`/room/${id}`);
 }

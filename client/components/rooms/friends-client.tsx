@@ -1,7 +1,8 @@
 "use client";
 
 import { Check, Copy, UserMinus, UserPlus, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { refreshNotifications, useFriendLists } from "@/components/notifications";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,11 @@ import type { FriendLists, Person } from "@/lib/social-types";
 
 export function FriendsClient({ username, initial }: { username: string; initial: FriendLists }) {
   const [lists, setLists] = useState(initial);
+  // Live: the notification poller refreshes friend lists every few seconds.
+  const live = useFriendLists();
+  useEffect(() => {
+    if (live) setLists(live);
+  }, [live]);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -29,6 +35,7 @@ export function FriendsClient({ username, initial }: { username: string; initial
         return;
       }
       setLists(b);
+      refreshNotifications();
       setName("");
       toast.success(b.status === "accepted" ? "You're now friends" : "Request sent");
     } finally {
@@ -48,6 +55,7 @@ export function FriendsClient({ username, initial }: { username: string; initial
       return;
     }
     setLists(b);
+    refreshNotifications();
   };
 
   return (

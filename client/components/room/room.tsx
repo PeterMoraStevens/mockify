@@ -6,6 +6,7 @@ import type { RoomConfig } from "@/lib/room/connection";
 import { stopStream, type DevicePrefs } from "@/lib/room/media";
 import { Lobby } from "./lobby";
 import { RoomView } from "./room-view";
+import type { RoomMode } from "@/lib/rooms";
 
 export type RoomUser = { id: string; displayName: string };
 export type RoomDeadline = { expiresAt: number; maxExpiresAt: number };
@@ -18,7 +19,17 @@ export type JoinedState = {
   config: RoomConfig & { turn: boolean };
 };
 
-export function Room({ roomId, user, deadline }: { roomId: string; user: RoomUser; deadline: RoomDeadline }) {
+export function Room({
+  roomId,
+  user,
+  deadline,
+  initialMode,
+}: {
+  roomId: string;
+  user: RoomUser;
+  deadline: RoomDeadline;
+  initialMode: RoomMode;
+}) {
   const session = useMemo(() => createSessionDoc(), []);
   const [joined, setJoined] = useState<JoinedState | null>(null);
 
@@ -40,7 +51,7 @@ export function Room({ roomId, user, deadline }: { roomId: string; user: RoomUse
   useEffect(() => () => stopStream(streamRef.current), []);
 
   if (!joined) {
-    return <Lobby roomId={roomId} user={user} onJoin={setJoined} />;
+    return <Lobby roomId={roomId} user={user} onJoin={setJoined} mode={initialMode} />;
   }
   return (
     <RoomView
@@ -48,6 +59,7 @@ export function Room({ roomId, user, deadline }: { roomId: string; user: RoomUse
       user={user}
       joined={joined}
       deadline={deadline}
+      initialMode={initialMode}
       doc={session.doc}
       awareness={session.awareness}
       onLeave={() => stopStream(joined.stream)}

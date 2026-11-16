@@ -1,6 +1,7 @@
 import { CalendarDays, MessageSquareQuote, Send } from "lucide-react";
 import { redirect } from "next/navigation";
 import { Avatar } from "@/components/avatar";
+import { EditProfile } from "@/components/profile/edit-profile";
 import { ReviewCard } from "@/components/reviews/review-card";
 import { getProblem } from "@/lib/problems/store";
 import { REVIEW_CRITERIA, type ReviewRole } from "@/lib/rooms";
@@ -36,7 +37,8 @@ export default async function ProfilePage() {
             {new Date(user.createdAt).toLocaleDateString(undefined, { month: "short", year: "numeric" })}
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <EditProfile username={user.username} displayName={user.displayName} />
           <Stat label="Reviews received" value={received.length} />
           <Stat label="Reviews given" value={given.length} />
         </div>

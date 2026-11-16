@@ -86,6 +86,7 @@ export function toPublic(p: Problem): PublicProblem {
     source: p.source,
     description: p.description,
     examples: p.examples,
+    ...(p.signature ? { signature: p.signature } : {}),
     starters: p.starters,
     hiddenCount: p.tests.length,
   };

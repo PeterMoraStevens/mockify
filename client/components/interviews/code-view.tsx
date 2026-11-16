@@ -1,5 +1,6 @@
 "use client";
 
+import { defaultHighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { EditorView, lineNumbers } from "@codemirror/view";
@@ -23,7 +24,7 @@ export function CodeView({ code, language }: { code: string; language: string | 
         extensions: [
           lineNumbers(),
           lang,
-          resolvedTheme === "dark" ? [oneDark, darkOverrides] : lightTheme,
+          resolvedTheme === "dark" ? [oneDark, darkOverrides] : [lightTheme, syntaxHighlighting(defaultHighlightStyle, { fallback: true })],
           EditorState.readOnly.of(true),
           EditorView.editable.of(false),
           EditorView.lineWrapping,

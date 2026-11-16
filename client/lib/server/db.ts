@@ -145,6 +145,8 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX problem_drafts_user ON problem_drafts(user_id, updated_at DESC);
   `,
+  // 2: system design rooms (the starting mode; the room can switch later).
+  `ALTER TABLE rooms ADD COLUMN mode TEXT NOT NULL DEFAULT 'coding';`,
 ];
 
 function migrate(conn: DatabaseSync) {

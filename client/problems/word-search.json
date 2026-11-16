@@ -1,0 +1,130 @@
+{
+  "slug": "word-search",
+  "title": "Word Search",
+  "difficulty": "medium",
+  "tags": [
+    "backtracking",
+    "matrix"
+  ],
+  "license": "MIT",
+  "source": {
+    "name": "Mockify seed set"
+  },
+  "description": "`board` is a grid of single letters. Return whether `word` can be traced through **adjacent** cells (horizontally or vertically), using each cell at most once.\n\n### Input\n- Line 1: `board`, array of arrays of words, length-prefixed (see below).\n- Line 2: `word`, a string (the whole line).\n\nNested arrays are written on one line as their length followed by each element, recursively: `[[1,2],[3]]` is `2 2 1 2 1 3`. The starter code reads this for you.\n\n### Output\n`true` or `false`.\n\n### Constraints\n- `1 <= rows, cols <= 6`\n- `1 <= word.length <= 15`\n- Upper- and lower-case English letters.",
+  "signature": {
+    "params": [
+      {
+        "name": "board",
+        "type": "string[][]"
+      },
+      {
+        "name": "word",
+        "type": "string"
+      }
+    ],
+    "returns": "bool"
+  },
+  "examples": [
+    {
+      "input": "3 4 A B C E 4 S F C S 4 A D E E\nABCCED\n",
+      "output": "true\n"
+    },
+    {
+      "input": "3 4 A B C E 4 S F C S 4 A D E E\nABCB\n",
+      "output": "false\n",
+      "explanation": "B can't be reused."
+    },
+    {
+      "input": "1 1 a\na\n",
+      "output": "true\n"
+    }
+  ],
+  "tests": [
+    {
+      "input": "1 2 a b\nba\n",
+      "output": "true\n"
+    },
+    {
+      "input": "1 2 a b\nabc\n",
+      "output": "false\n"
+    },
+    {
+      "input": "2 2 a a 2 a a\naaaaa\n",
+      "output": "false\n"
+    },
+    {
+      "input": "6 5 a a c b b 5 b a c b b 5 c c b b b 5 b a b b a 5 b b a b b 5 b c b b a\nbbbcaac\n",
+      "output": "true\n"
+    },
+    {
+      "input": "5 2 c c 2 a b 2 b c 2 b a 2 b c\nba\n",
+      "output": "true\n"
+    },
+    {
+      "input": "6 4 a b c b 4 c c c c 4 b a b b 4 b a b c 4 a b b b 4 a c a b\nccaabbcabc\n",
+      "output": "true\n"
+    },
+    {
+      "input": "5 3 b a b 3 b c c 3 b b a 3 b a b 3 c b c\nbaa\n",
+      "output": "false\n"
+    },
+    {
+      "input": "4 4 c a a c 4 b a c a 4 a c b b 4 b a a b\nbbbcaabcb\n",
+      "output": "false\n"
+    },
+    {
+      "input": "6 5 b b a b b 5 c b c b c 5 b a b b c 5 b c c c a 5 b a c c a 5 b b c b b\ncaaa\n",
+      "output": "false\n"
+    },
+    {
+      "input": "4 3 c a a 3 a c c 3 c b b 3 b a b\nabcb\n",
+      "output": "true\n"
+    },
+    {
+      "input": "3 4 a a c a 4 c c a c 4 c c b a\nccbacaacc\n",
+      "output": "true\n"
+    },
+    {
+      "input": "5 2 c c 2 b a 2 c a 2 c c 2 a b\nbabcccbccc\n",
+      "output": "false\n"
+    },
+    {
+      "input": "4 4 a a a a 4 a a a a 4 a a a a 4 a a a a\naaaaaaaab\n",
+      "output": "false\n"
+    }
+  ],
+  "starters": {
+    "python": "import sys\nfrom typing import List\n\n\ndef solve(board: List[List[str]], word: str) -> bool:\n    # Return true if word can be traced through adjacent cells.\n    return False\n\n\ndef read_string_1(tk):\n    n = int(next(tk))\n    return [next(tk) for _ in range(n)]\n\n\ndef read_string_2(tk):\n    n = int(next(tk))\n    return [read_string_1(tk) for _ in range(n)]\n\n\ndef main() -> None:\n    lines = sys.stdin.read().split(\"\\n\")\n\n    def line(i: int) -> str:\n        return lines[i].rstrip(\"\\r\") if i < len(lines) else \"\"\n\n    board = read_string_2(iter(line(0).split()))\n    word = line(1)\n    result = solve(board, word)\n    print((\"true\" if result else \"false\"))\n\n\nif __name__ == \"__main__\":\n    main()\n",
+    "javascript": "function solve(board, word) {\n  // Return true if word can be traced through adjacent cells.\n  return false;\n}\n\nfunction readWords(s) {\n  return s.trim().split(/\\s+/).filter(Boolean);\n}\n\nfunction tok(s) {\n  const t = readWords(s);\n  let i = 0;\n  return { next: () => t[i++] ?? \"0\" };\n}\n\nfunction readString1(tk) {\n  const n = Number(tk.next());\n  const res = [];\n  for (let i = 0; i < n; i++) res.push(tk.next());\n  return res;\n}\n\nfunction readString2(tk) {\n  const n = Number(tk.next());\n  const res = [];\n  for (let i = 0; i < n; i++) res.push(readString1(tk));\n  return res;\n}\n\nfunction main() {\n  const lines = require(\"fs\").readFileSync(0, \"utf8\").split(\"\\n\");\n  const line = (i) => (lines[i] ?? \"\").replace(/\\r$/, \"\");\n  const board = readString2(tok(line(0)));\n  const word = line(1);\n  const result = solve(board, word);\n  console.log((result ? \"true\" : \"false\"));\n}\n\nmain();\n",
+    "typescript": "/// <reference lib=\"es2022\" />\ndeclare const require: any;\n\nfunction solve(board: string[][], word: string): boolean {\n  // Return true if word can be traced through adjacent cells.\n  return false;\n}\n\nfunction readWords(s: string): string[] {\n  return s.trim().split(/\\s+/).filter(Boolean);\n}\n\ntype Tok = { next: () => string };\n\nfunction tok(s: string): Tok {\n  const t = readWords(s);\n  let i = 0;\n  return { next: () => t[i++] ?? \"0\" };\n}\n\nfunction readString1(tk: Tok): string[] {\n  const n = Number(tk.next());\n  const res: string[] = [];\n  for (let i = 0; i < n; i++) res.push(tk.next());\n  return res;\n}\n\nfunction readString2(tk: Tok): string[][] {\n  const n = Number(tk.next());\n  const res: string[][] = [];\n  for (let i = 0; i < n; i++) res.push(readString1(tk));\n  return res;\n}\n\nfunction main(): void {\n  const lines: string[] = require(\"fs\").readFileSync(0, \"utf8\").split(\"\\n\");\n  const line = (i: number): string => (lines[i] ?? \"\").replace(/\\r$/, \"\");\n  const board = readString2(tok(line(0)));\n  const word = line(1);\n  const result = solve(board, word);\n  console.log((result ? \"true\" : \"false\"));\n}\n\nmain();\n",
+    "java": "import java.io.*;\nimport java.util.*;\n\npublic class Main {\n    static boolean solve(String[][] board, String word) {\n        // Return true if word can be traced through adjacent cells.\n        return false;\n    }\n\n    static class Tok {\n        final String[] t;\n        int i = 0;\n        Tok(String s) {\n            String x = s.trim();\n            t = x.isEmpty() ? new String[0] : x.split(\"\\\\s+\");\n        }\n        String next() { return i < t.length ? t[i++] : \"0\"; }\n        int left() { return t.length - i; }\n    }\n\n    static String line(List<String> lines, int i) {\n        return i < lines.size() ? lines.get(i) : \"\";\n    }\n\n    static String[] readString1(Tok tk) {\n        int n = Integer.parseInt(tk.next());\n        String[] res = new String[n];\n        for (int i = 0; i < n; i++) res[i] = tk.next();\n        return res;\n    }\n\n    static String[][] readString2(Tok tk) {\n        int n = Integer.parseInt(tk.next());\n        String[][] res = new String[n][];\n        for (int i = 0; i < n; i++) res[i] = readString1(tk);\n        return res;\n    }\n\n    public static void main(String[] args) throws IOException {\n        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));\n        List<String> lines = new ArrayList<>();\n        for (String _l; (_l = br.readLine()) != null; ) lines.add(_l);\n        String[][] board = readString2(new Tok(line(lines, 0)));\n        String word = line(lines, 1);\n        boolean result = solve(board, word);\n        System.out.println((result ? \"true\" : \"false\"));\n    }\n}\n",
+    "c": "#include <stdbool.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\nbool solve(char*** board, int boardSize, int* boardColSize, char* word) {\n    // Return true if word can be traced through adjacent cells.\n    return false;\n}\n\nstatic char* read_all(void) {\n    size_t cap = 1 << 16, len = 0;\n    char* buf = malloc(cap);\n    for (;;) {\n        if (len + 1 >= cap) buf = realloc(buf, cap *= 2);\n        size_t r = fread(buf + len, 1, cap - len - 1, stdin);\n        if (r == 0) break;\n        len += r;\n    }\n    buf[len] = '\\0';\n    return buf;\n}\n\nstatic char** g_lines;\nstatic int g_count;\n\nstatic char* line(int i) {\n    return i < g_count ? g_lines[i] : \"\";\n}\n\ntypedef struct {\n    char** t;\n    int n, i;\n} Tok;\n\n__attribute__((unused)) static Tok tok(const char* s) {\n    Tok k = {0};\n    char* copy = strdup(s);\n    int cap = 16;\n    k.t = malloc(cap * sizeof(char*));\n    for (char* w = strtok(copy, \" \\t\"); w; w = strtok(NULL, \" \\t\")) {\n        if (k.n == cap) k.t = realloc(k.t, (cap *= 2) * sizeof(char*));\n        k.t[k.n++] = w;\n    }\n    return k;\n}\n\n__attribute__((unused)) static char* tk_next(Tok* k) {\n    return k->i < k->n ? k->t[k->i++] : \"0\";\n}\n\nint main(void) {\n    char* input = read_all();\n    int cap = 8;\n    g_lines = malloc(cap * sizeof(char*));\n    for (char* p = input;;) {\n        if (g_count == cap) g_lines = realloc(g_lines, (cap *= 2) * sizeof(char*));\n        g_lines[g_count++] = p;\n        char* nl = strchr(p, '\\n');\n        size_t n = nl ? (size_t)(nl - p) : strlen(p);\n        if (n && p[n - 1] == '\\r') p[n - 1] = '\\0';\n        if (!nl) break;\n        *nl = '\\0';\n        p = nl + 1;\n    }\n    Tok k0 = tok(line(0));\n    int boardSize = atoi(tk_next(&k0));\n    char*** board = malloc((boardSize + 1) * sizeof(char**));\n    int* boardColSize = malloc((boardSize + 1) * sizeof(int));\n    for (int r = 0; r < boardSize; r++) {\n        boardColSize[r] = atoi(tk_next(&k0));\n        board[r] = malloc((boardColSize[r] + 1) * sizeof(char*));\n        for (int j = 0; j < boardColSize[r]; j++) board[r][j] = tk_next(&k0);\n    }\n    char* word = line(1);\n    bool result = solve(board, boardSize, boardColSize, word);\n    printf(\"%s\\n\", result ? \"true\" : \"false\");\n    return 0;\n}\n",
+    "cpp": "#include <algorithm>\n#include <climits>\n#include <iostream>\n#include <map>\n#include <numeric>\n#include <queue>\n#include <set>\n#include <sstream>\n#include <stack>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <vector>\nusing namespace std;\n\nbool solve(vector<vector<string>>& board, string& word) {\n    // Return true if word can be traced through adjacent cells.\n    return false;\n}\n\nstruct Tok {\n    vector<string> t;\n    size_t i = 0;\n    explicit Tok(const string& s) {\n        istringstream is(s);\n        for (string w; is >> w;) t.push_back(w);\n    }\n    string next() { return i < t.size() ? t[i++] : \"0\"; }\n};\n\nstatic vector<string> g_lines;\nstatic string line(size_t i) { return i < g_lines.size() ? g_lines[i] : string(); }\n\nstatic vector<string> readString1(Tok& tk) {\n    int n = stoi(tk.next());\n    vector<string> res;\n    for (int i = 0; i < n; i++) res.push_back(tk.next());\n    return res;\n}\n\nstatic vector<vector<string>> readString2(Tok& tk) {\n    int n = stoi(tk.next());\n    vector<vector<string>> res;\n    for (int i = 0; i < n; i++) res.push_back(readString1(tk));\n    return res;\n}\n\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n    for (string l; getline(cin, l);) {\n        if (!l.empty() && l.back() == '\\r') l.pop_back();\n        g_lines.push_back(l);\n    }\n    Tok tk0(line(0));\n    vector<vector<string>> board = readString2(tk0);\n    string word = line(1);\n    bool result = solve(board, word);\n    cout << (result ? \"true\" : \"false\") << \"\\n\";\n    return 0;\n}\n",
+    "csharp": "using System;\nusing System.Collections.Generic;\nusing System.Linq;\n\npublic class Program {\n    static bool Solve(string[][] board, string word) {\n        // Return true if word can be traced through adjacent cells.\n        return false;\n    }\n\n    class Tok {\n        readonly string[] t;\n        int i;\n        public Tok(string s) { t = s.Split(new[] { ' ', '\\t' }, StringSplitOptions.RemoveEmptyEntries); }\n        public string Next() => i < t.Length ? t[i++] : \"0\";\n        public int Left => t.Length - i;\n    }\n\n    static string[] lines = new string[0];\n    static string Line(int i) => i < lines.Length ? lines[i] : \"\";\n\n    static string[] ReadString1(Tok tk) {\n        int n = int.Parse(tk.Next());\n        var res = new string[n];\n        for (int i = 0; i < n; i++) res[i] = tk.Next();\n        return res;\n    }\n\n    static string[][] ReadString2(Tok tk) {\n        int n = int.Parse(tk.Next());\n        var res = new string[n][];\n        for (int i = 0; i < n; i++) res[i] = ReadString1(tk);\n        return res;\n    }\n\n    public static void Main() {\n        lines = Console.In.ReadToEnd().Split('\\n').Select(_l => _l.TrimEnd('\\r')).ToArray();\n        string[][] board = ReadString2(new Tok(Line(0)));\n        string word = Line(1);\n        var result = Solve(board, word);\n        Console.WriteLine((result ? \"true\" : \"false\"));\n    }\n}\n",
+    "go": "package main\n\nimport (\n\t\"fmt\"\n\t\"io\"\n\t\"os\"\n\t\"strconv\"\n\t\"strings\"\n)\n\nfunc solve(board [][]string, word string) bool {\n\t// Return true if word can be traced through adjacent cells.\n\treturn false\n}\n\nfunc atoi(s string) int {\n\tv, _ := strconv.Atoi(strings.TrimSpace(s))\n\treturn v\n}\n\ntype Tok struct {\n\tt []string\n\ti int\n}\n\nfunc (k *Tok) next() string {\n\tif k.i < len(k.t) {\n\t\tk.i++\n\t\treturn k.t[k.i-1]\n\t}\n\treturn \"0\"\n}\n\nfunc readString1(tk *Tok) []string {\n\tn := atoi(tk.next())\n\tres := make([]string, n)\n\tfor i := 0; i < n; i++ {\n\t\tres[i] = tk.next()\n\t}\n\treturn res\n}\n\nfunc readString2(tk *Tok) [][]string {\n\tn := atoi(tk.next())\n\tres := make([][]string, n)\n\tfor i := 0; i < n; i++ {\n\t\tres[i] = readString1(tk)\n\t}\n\treturn res\n}\n\nfunc main() {\n\tdata, _ := io.ReadAll(os.Stdin)\n\tlines := strings.Split(strings.ReplaceAll(string(data), \"\\r\", \"\"), \"\\n\")\n\tline := func(i int) string {\n\t\tif i < len(lines) {\n\t\t\treturn lines[i]\n\t\t}\n\t\treturn \"\"\n\t}\n\tboard := readString2(&Tok{t: strings.Fields(line(0))})\n\tword := line(1)\n\tresult := solve(board, word)\n\tfmt.Println(result)\n}\n",
+    "rust": "#![allow(unused_imports, unused_variables, unused_mut, dead_code)]\nuse std::collections::{HashMap, HashSet, VecDeque};\nuse std::io::{self, Read};\n\nfn solve(board: Vec<Vec<String>>, word: String) -> bool {\n    // Return true if word can be traced through adjacent cells.\n    false\n}\n\nfn line<'a>(lines: &[&'a str], i: usize) -> &'a str {\n    lines.get(i).copied().unwrap_or(\"\")\n}\n\nstruct Tok<'a> {\n    it: std::str::SplitWhitespace<'a>,\n}\n\nimpl<'a> Tok<'a> {\n    fn new(s: &'a str) -> Self {\n        Tok { it: s.split_whitespace() }\n    }\n    fn take(&mut self) -> &'a str {\n        self.it.next().unwrap_or(\"0\")\n    }\n}\n\nfn read_string_1(tk: &mut Tok) -> Vec<String> {\n    let n: usize = tk.take().parse().unwrap();\n    (0..n).map(|_| tk.take().to_string()).collect()\n}\n\nfn read_string_2(tk: &mut Tok) -> Vec<Vec<String>> {\n    let n: usize = tk.take().parse().unwrap();\n    (0..n).map(|_| read_string_1(tk)).collect()\n}\n\nfn main() {\n    let mut input = String::new();\n    io::stdin().read_to_string(&mut input).unwrap();\n    let lines: Vec<&str> = input.split('\\n').map(|l| l.trim_end_matches('\\r')).collect();\n    let board: Vec<Vec<String>> = read_string_2(&mut Tok::new(line(&lines, 0)));\n    let word: String = line(&lines, 1).to_string();\n    let result = solve(board, word);\n    println!(\"{}\", result);\n}\n",
+    "kotlin": "fun solve(board: Array<Array<String>>, word: String): Boolean {\n    // Return true if word can be traced through adjacent cells.\n    return false\n}\n\nclass Tok(s: String) {\n    private val t = s.trim().split(Regex(\"\\\\s+\")).filter { it.isNotEmpty() }\n    private var i = 0\n    fun next(): String = if (i < t.size) t[i++] else \"0\"\n    fun left(): Int = t.size - i\n}\n\nfun readString1(tk: Tok): Array<String> {\n    val n = tk.next().toInt()\n    return Array(n) { tk.next() }\n}\n\nfun readString2(tk: Tok): Array<Array<String>> {\n    val n = tk.next().toInt()\n    return Array(n) { readString1(tk) }\n}\n\nfun main() {\n    val lines = generateSequence(::readLine).map { it.trimEnd('\\r') }.toList()\n    fun line(i: Int): String = lines.getOrElse(i) { \"\" }\n    val board = readString2(Tok(line(0)))\n    val word = line(1)\n    val result = solve(board, word)\n    println(result)\n}\n",
+    "swift": "import Foundation\n\nfunc solve(_ board: [[String]], _ word: String) -> Bool {\n    // Return true if word can be traced through adjacent cells.\n    return false\n}\n\nfinal class Tok {\n    let t: [String]\n    var i = 0\n    init(_ s: String) { t = s.split(whereSeparator: { $0 == \" \" || $0 == \"\\t\" }).map(String.init) }\n    func next() -> String {\n        if i < t.count { i += 1; return t[i - 1] }\n        return \"0\"\n    }\n    var left: Int { t.count - i }\n}\n\nfunc readString1(_ tk: Tok) -> [String] {\n    let n = Int(tk.next())!\n    var res: [String] = []\n    for _ in 0..<n { res.append(tk.next()) }\n    return res\n}\n\nfunc readString2(_ tk: Tok) -> [[String]] {\n    let n = Int(tk.next())!\n    var res: [[String]] = []\n    for _ in 0..<n { res.append(readString1(tk)) }\n    return res\n}\n\nvar lines: [String] = []\nwhile let l = readLine() { lines.append(l) }\nfunc line(_ i: Int) -> String { i < lines.count ? lines[i] : \"\" }\n\nlet board: [[String]] = readString2(Tok(line(0)))\nlet word: String = line(1)\nlet result = solve(board, word)\nprint(result)\n",
+    "ruby": "def solve(board, word)\n  # Return true if word can be traced through adjacent cells.\n  false\nend\n\ndef line(lines, i)\n  (lines[i] || \"\").chomp\nend\n\ndef read_string_1(tk)\n  Array.new((tk.shift || \"0\").to_i) { (tk.shift || \"0\") }\nend\n\ndef read_string_2(tk)\n  Array.new((tk.shift || \"0\").to_i) { read_string_1(tk) }\nend\n\nlines = STDIN.read.split(\"\\n\", -1)\nboard = read_string_2(line(lines, 0).split)\nword = line(lines, 1)\nresult = solve(board, word)\nputs (result ? \"true\" : \"false\")\n",
+    "php": "<?php\n\nfunction solve(array $board, string $word): bool {\n    // Return true if word can be traced through adjacent cells.\n    return false;\n}\n\nfunction line(array $lines, int $i): string {\n    return rtrim($lines[$i] ?? \"\", \"\\r\");\n}\n\nfunction readWords(string $s): array {\n    return preg_split('/\\s+/', trim($s), -1, PREG_SPLIT_NO_EMPTY);\n}\n\nfunction readString1(array &$tk): array {\n    $n = intval(array_shift($tk) ?? \"0\");\n    $res = [];\n    for ($i = 0; $i < $n; $i++) $res[] = (array_shift($tk) ?? \"0\");\n    return $res;\n}\n\nfunction readString2(array &$tk): array {\n    $n = intval(array_shift($tk) ?? \"0\");\n    $res = [];\n    for ($i = 0; $i < $n; $i++) $res[] = readString1($tk);\n    return $res;\n}\n\n$lines = explode(\"\\n\", stream_get_contents(STDIN));\n$tk0 = readWords(line($lines, 0));\n$board = readString2($tk0);\n$word = line($lines, 1);\n$result = solve($board, $word);\necho ($result ? \"true\" : \"false\"), \"\\n\";\n",
+    "scala": "import scala.collection.mutable\n\nclass Tok(s: String) {\n  private val t = s.trim.split(\"\\\\s+\").filter(_.nonEmpty)\n  private var i = 0\n  def next(): String = if (i < t.length) { i += 1; t(i - 1) } else \"0\"\n  def left: Int = t.length - i\n}\n\nobject Main {\n  def solve(board: Array[Array[String]], word: String): Boolean = {\n    // Return true if word can be traced through adjacent cells.\n    false\n  }\n\n  def readString1(tk: Tok): Array[String] = {\n    val n = tk.next().toInt\n    Array.fill(n)(tk.next())\n  }\n\n  def readString2(tk: Tok): Array[Array[String]] = {\n    val n = tk.next().toInt\n    Array.fill(n)(readString1(tk))\n  }\n\n  def main(args: Array[String]): Unit = {\n    val lines = scala.io.Source.stdin.getLines().toArray\n    def line(i: Int): String = if (i < lines.length) lines(i).stripSuffix(\"\\r\") else \"\"\n    val board = readString2(new Tok(line(0)))\n    val word = line(1)\n    val result = solve(board, word)\n    println(result)\n  }\n}\n",
+    "dart": "import 'dart:io';\n\nbool solve(List<List<String>> board, String word) {\n  // Return true if word can be traced through adjacent cells.\n  return false;\n}\n\nclass Tok {\n  final List<String> t;\n  int i = 0;\n  Tok(String s) : t = s.trim().split(RegExp(r'\\s+')).where((w) => w.isNotEmpty).toList();\n  String next() => i < t.length ? t[i++] : '0';\n  int get left => t.length - i;\n}\n\nList<String> readString1(Tok tk) {\n  final n = int.parse(tk.next());\n  return List.generate(n, (_) => tk.next());\n}\n\nList<List<String>> readString2(Tok tk) {\n  final n = int.parse(tk.next());\n  return List.generate(n, (_) => readString1(tk));\n}\n\nvoid main() {\n  final lines = <String>[];\n  while (true) {\n    final l = stdin.readLineSync();\n    if (l == null) break;\n    lines.add(l);\n  }\n  String line(int i) => i < lines.length ? lines[i] : '';\n  final List<List<String>> board = readString2(Tok(line(0)));\n  final String word = line(1);\n  final result = solve(board, word);\n  print(result);\n}\n"
+  },
+  "interviewer": {
+    "hints": [
+      "Try every start cell; from there do a depth-first search over neighbors.",
+      "Mark the cell as used while it's on the current path, and unmark it when you backtrack."
+    ],
+    "followUps": [
+      "Search for many words at once (Word Search II, with a trie)."
+    ],
+    "expectedComplexity": {
+      "time": "O(rows·cols·3^len)",
+      "space": "O(len)"
+    }
+  },
+  "reference": {
+    "language": "python",
+    "code": "import bisect\nimport heapq\nimport math\nfrom collections import Counter\nimport sys\nfrom typing import List\n\n\ndef solve(board: List[List[str]], word: str) -> bool:\n    # Return true if word can be traced through adjacent cells.\n    rows, cols = len(board), len(board[0])\n    def go(i, j, k):\n        if board[i][j] != word[k]:\n            return False\n        if k == len(word) - 1:\n            return True\n        saved, board[i][j] = board[i][j], \"#\"\n        for x, y in ((i + 1, j), (i - 1, j), (i, j + 1), (i, j - 1)):\n            if 0 <= x < rows and 0 <= y < cols and go(x, y, k + 1):\n                board[i][j] = saved\n                return True\n        board[i][j] = saved\n        return False\n    return any(go(i, j, 0) for i in range(rows) for j in range(cols))\n\n\ndef read_string_1(tk):\n    n = int(next(tk))\n    return [next(tk) for _ in range(n)]\n\n\ndef read_string_2(tk):\n    n = int(next(tk))\n    return [read_string_1(tk) for _ in range(n)]\n\n\ndef main() -> None:\n    lines = sys.stdin.read().split(\"\\n\")\n\n    def line(i: int) -> str:\n        return lines[i].rstrip(\"\\r\") if i < len(lines) else \"\"\n\n    board = read_string_2(iter(line(0).split()))\n    word = line(1)\n    result = solve(board, word)\n    print((\"true\" if result else \"false\"))\n\n\nif __name__ == \"__main__\":\n    main()\n"
+  }
+}

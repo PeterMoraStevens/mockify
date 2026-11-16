@@ -7,7 +7,7 @@ import type { RunMode, RunResponse } from "@/lib/run-types";
 
 /**
  * Everything the two people share lives in one Y.Doc that syncs directly
- * between browsers over the WebRTC data channel. The server never sees it.
+ * between browsers over the WebRTC data channel.
  *
  *   code      Y.Text   the editor
  *   session   Y.Map    problem slug, language, which slot is interviewing
@@ -86,6 +86,8 @@ export function readSession(doc: Y.Doc) {
     language: ((s.get("language") as LanguageId | undefined) ?? "python") as LanguageId,
     interviewerSlot: ((s.get("interviewerSlot") as Slot | undefined) ?? "a") as Slot,
     ended: (s.get("ended") as EndedState | undefined) ?? null,
+    /** Unset until someone switches; the room's starting mode applies until then. */
+    mode: ((m) => (m === "coding" || m === "design" ? m : null))(s.get("mode")) as "coding" | "design" | null,
     /** Room deadline after an extension, so the other person sees it immediately. */
     expiresAt: (s.get("expiresAt") as number | undefined) ?? null,
   };

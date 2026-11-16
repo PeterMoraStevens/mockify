@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { RoomClosed } from "@/components/room/room-closed";
 import { Room } from "@/components/room/room";
 import { isRoomId } from "@/lib/room-id";
-import { ROOM_MAX_MS } from "@/lib/rooms";
+import { ROOM_MAX_MS, isRoomMode } from "@/lib/rooms";
 import { getCurrentUser } from "@/lib/server/auth";
 import { getRoom, isOpen, isParticipant, participantIds } from "@/lib/server/rooms";
 
@@ -29,6 +29,7 @@ export default async function RoomPage({ params }: PageProps<"/room/[roomId]">) 
       roomId={roomId}
       user={{ id: user.id, displayName: user.displayName }}
       deadline={{ expiresAt: room.expires_at, maxExpiresAt: room.created_at + ROOM_MAX_MS }}
+      initialMode={isRoomMode(room.mode) ? room.mode : "coding"}
     />
   );
 }

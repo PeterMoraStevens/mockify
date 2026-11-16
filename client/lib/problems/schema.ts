@@ -1,14 +1,18 @@
 import { z } from "zod";
 import { LANGUAGE_IDS } from "@/lib/languages";
-import { PARAM_TYPES, RETURN_TYPES } from "@/lib/problems/starters";
+import { isValidType } from "@/lib/problems/starters";
 
 // Each test is sent to Piston as its own request, and Piston rejects bodies over
 // ~100 KB (source code + stdin), so keep a single test's input well below that.
 export const MAX_IO = 64 * 1024;
 
+// A program's output is cut off at 32 KB before it's compared (lib/server/piston.ts),
+// so an expected output any bigger could never pass.
+export const MAX_EXPECTED_OUTPUT = 30 * 1024;
+
 export const testCaseSchema = z.object({
   input: z.string().max(MAX_IO),
-  output: z.string().max(MAX_IO),
+  output: z.string().max(MAX_EXPECTED_OUTPUT, "Expected outputs must be under 30 KB (program output is cut off at 32 KB)"),
   explanation: z.string().max(2000).optional(),
 });
 
@@ -34,10 +38,10 @@ export const problemSchema = z
     signature: z
       .object({
         params: z
-          .array(z.object({ name: z.string().min(1).max(40), type: z.enum(PARAM_TYPES) }))
+          .array(z.object({ name: z.string().min(1).max(40), type: z.string().refine((t) => isValidType(t, "param"), "unsupported type") }))
           .min(1)
           .max(6),
-        returns: z.enum(RETURN_TYPES),
+        returns: z.string().refine((t) => isValidType(t, "return"), "unsupported return type"),
       })
       .optional(),
     /** Visible test cases. Shown to both people and used by Run. */
@@ -79,7 +83,7 @@ export type Difficulty = Problem["difficulty"];
 /** What the candidate's browser receives. No hidden tests, no reference, no hints. */
 export type PublicProblem = Pick<
   Problem,
-  "slug" | "title" | "difficulty" | "tags" | "license" | "source" | "description" | "examples" | "starters"
+  "slug" | "title" | "difficulty" | "tags" | "license" | "source" | "description" | "examples" | "starters" | "signature"
 > & { hiddenCount: number };
 
 /** What the interviewer's browser receives, on top of the public view. */

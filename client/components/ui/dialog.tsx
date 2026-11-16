@@ -12,7 +12,10 @@ export function Dialog({
   description,
   children,
   className,
+  dismissible = true,
 }: {
+  /** false: no close button, Escape and clicking outside do nothing (a step that must be finished). */
+  dismissible?: boolean;
   open: boolean;
   onClose: () => void;
   title: React.ReactNode;
@@ -23,18 +26,18 @@ export function Dialog({
   const titleId = React.useId();
 
   React.useEffect(() => {
-    if (!open) return;
+    if (!open || !dismissible) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, onClose, dismissible]);
 
   if (!open || typeof document === "undefined") return null;
 
   return createPortal(
     <div
       className="fixed inset-0 z-200 flex items-center justify-center bg-overlay/60 p-4 animate-in fade-in-0"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+      onMouseDown={(e) => dismissible && e.target === e.currentTarget && onClose()}
     >
       <div
         role="dialog"
@@ -45,13 +48,15 @@ export function Dialog({
           className,
         )}
       >
-        <button
-          onClick={onClose}
-          aria-label="Close"
-          className="absolute right-3 top-3 rounded-base border-2 border-border bg-background p-1 hover:bg-main"
-        >
-          <X className="size-4" />
-        </button>
+        {dismissible && (
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute right-3 top-3 rounded-base border-2 border-border bg-background p-1 hover:bg-main"
+          >
+            <X className="size-4" />
+          </button>
+        )}
         <h2 id={titleId} className="pr-10 text-xl">
           {title}
         </h2>

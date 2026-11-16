@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Clock, DoorOpen, FileText, History, Inbox, Plus, X } from "lucide-react";
+import { ArrowRight, Clock, DoorOpen, FileText, History, Inbox, PenTool, Plus, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -53,11 +53,18 @@ export function RoomsClient({
             Rejoin a room that&apos;s still open, or look back at past interviews. You can have {maxOpen} open rooms at a time.
           </p>
         </div>
-        <Button asChild disabled={openMine >= maxOpen}>
-          <NewRoomLink>
-            <Plus /> New interview
-          </NewRoomLink>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild disabled={openMine >= maxOpen}>
+            <NewRoomLink>
+              <Plus /> Coding interview
+            </NewRoomLink>
+          </Button>
+          <Button asChild variant="neutral" disabled={openMine >= maxOpen}>
+            <NewRoomLink mode="design" title="Whiteboard-only room. You can switch to coding later.">
+              <PenTool /> System design
+            </NewRoomLink>
+          </Button>
+        </div>
       </div>
 
       {limitHit && (
@@ -99,6 +106,7 @@ export function RoomsClient({
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2 font-heading">
                   {others(r).length ? `With ${others(r).map((p) => p.displayName).join(", ")}` : "Waiting for someone to join"}
+                  {r.mode === "design" && <Badge tone="blue">System design</Badge>}
                   {r.problemTitle && <Badge tone="neutral">{r.problemTitle}</Badge>}
                 </div>
                 <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
@@ -124,7 +132,7 @@ export function RoomsClient({
             <Card key={r.id}>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2 font-heading">
-                  {r.problemTitle ?? "Free-form session"}
+                  {r.problemTitle ?? (r.mode === "design" ? "System design" : "Free-form session")}
                   <span className="font-base text-muted">
                     {others(r).length ? `with ${others(r).map((p) => p.displayName).join(", ")}` : "(solo)"}
                   </span>

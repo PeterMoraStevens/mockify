@@ -1,3 +1,4 @@
+import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { REVIEW_CRITERIA } from "@/lib/rooms";
@@ -18,23 +19,16 @@ export function ReviewCard({
   link?: boolean;
 }) {
   const criteria = REVIEW_CRITERIA[review.authorRole];
-  return (
-    <article className="rounded-base border-2 border-border bg-secondary-background p-5 shadow-shadow">
+  const date = new Date(review.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" });
+  const body = (
+    <>
       <header className="flex flex-wrap items-center gap-2">
         <span className="font-heading">{heading}</span>
         <Badge tone={review.authorRole === "interviewer" ? "violet" : "blue"}>
           {review.authorRole === "interviewer" ? "as interviewer" : "as candidate"}
         </Badge>
         {problemTitle && <Badge tone="neutral">{problemTitle}</Badge>}
-        <time className="ml-auto text-xs text-muted">
-          {link ? (
-            <Link href={`/interviews/${review.roomId}`} className="underline underline-offset-4">
-              {new Date(review.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" })}
-            </Link>
-          ) : (
-            new Date(review.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" })
-          )}
-        </time>
+        <time className="ml-auto text-xs text-muted">{date}</time>
       </header>
       <div className="mt-4 grid grid-cols-3 gap-2">
         {criteria.map((c, i) => (
@@ -51,7 +45,25 @@ export function ReviewCard({
           </div>
         ))}
       </div>
-      {review.notes && <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed">{review.notes}</p>}
-    </article>
+      {review.notes && <p className={cn("mt-4 whitespace-pre-wrap text-sm leading-relaxed", link && "line-clamp-3")}>{review.notes}</p>}
+      {link && (
+        <div className="mt-3 flex items-center gap-1 text-xs font-heading text-muted transition-colors group-hover:text-foreground">
+          Open the interview: code, whiteboard and full feedback <ArrowUpRight className="size-3.5" />
+        </div>
+      )}
+    </>
+  );
+  const box = "block rounded-base border-2 border-border bg-secondary-background p-5 shadow-shadow";
+  if (!link) return <article className={box}>{body}</article>;
+  return (
+    <Link
+      href={`/interviews/${review.roomId}`}
+      className={cn(
+        box,
+        "group transition-all hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2",
+      )}
+    >
+      {body}
+    </Link>
   );
 }

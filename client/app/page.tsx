@@ -3,14 +3,18 @@ import Link from "next/link";
 import { NewRoomLink } from "@/components/new-room-link";
 import { Button } from "@/components/ui/button";
 import { Highlighter } from "@/components/ui/highlighter";
-import Marquee from "@/components/ui/marquee";
-import { RoomPreview } from "@/components/landing/room-preview";
 
 const FEATURES = [
   { icon: Users, title: "Practice together", body: "Send a link, or get paired with whoever's free. Swap roles whenever you like.", tone: "bg-accent-blue" },
   { icon: Code2, title: "Real problems", body: "Run code and check it against hidden tests, in the language you're interviewing in.", tone: "bg-main" },
   { icon: MessageSquareText, title: "Honest feedback", body: "Wrap up by rating each other, and track how you improve over time.", tone: "bg-accent-green" },
   { icon: RotateCcw, title: "Pick up where you left off", body: "Rejoin a room anytime it's open, and look back at past code, notes and whiteboards.", tone: "bg-accent-yellow" },
+];
+
+const STEPS = [
+  { title: "Open a room", body: "Pick coding or system design. You get a link that's good for an hour.", tone: "bg-main" },
+  { title: "Bring a partner", body: "Invite a friend, send the link, or get matched with someone free.", tone: "bg-accent-blue" },
+  { title: "Interview, then review", body: "Solve it together, then rate each other and keep the notes.", tone: "bg-accent-green" },
 ];
 
 export default function Home() {
@@ -47,13 +51,25 @@ export default function Home() {
               </Button>
             </div>
           </div>
-          <RoomPreview />
+          <ol className="grid gap-4">
+            {STEPS.map((step, i) => (
+              <li
+                key={step.title}
+                className="flex items-start gap-4 rounded-base border-2 border-border bg-secondary-background p-5 shadow-shadow"
+                style={{ marginLeft: `${i * 1.5}rem` }}
+              >
+                <span className={`grid size-10 shrink-0 place-items-center rounded-base border-2 border-border font-heading text-lg text-black ${step.tone}`}>
+                  {i + 1}
+                </span>
+                <div>
+                  <h3 className="text-lg">{step.title}</h3>
+                  <p className="mt-0.5 text-sm text-muted">{step.body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
-
-      <Marquee
-        items={["Coding rounds", "System design", "Swap roles", "Hidden tests", "Interviewer hints", "Shared notes", "Feedback"]}
-      />
 
       {/* ----------------------------------------------------- features */}
       <section className="mx-auto max-w-7xl px-4 py-20">

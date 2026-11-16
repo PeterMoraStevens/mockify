@@ -77,6 +77,7 @@ export function WrapUpDialog({
   return (
     <Dialog
       open
+      dismissible={false}
       onClose={() => {}}
       title={title}
       description={

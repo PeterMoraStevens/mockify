@@ -61,7 +61,21 @@ type Msg =
 
 /** Fire-and-forget state that isn't worth keeping in the doc (live pointers). */
 export type Ephemeral =
-  | { k: "ptr"; panel: string; x: number; y: number; pos?: number; dx?: number; dy?: number }
+  | {
+      k: "ptr";
+      panel: string;
+      /** Fallback: fraction of the panel's box. */
+      x: number;
+      y: number;
+      /** Editor: document position, plus pixel offset from it. */
+      pos?: number;
+      dx?: number;
+      dy?: number;
+      /** Hovered text: which text node in the panel (index + its text, to find it again), character, and offset from that character. */
+      text?: { i: number; snip: string; off: number; dx: number; dy: number };
+      /** Hovered element: child-index path from the panel, its tag, and the point as a fraction of its box. */
+      el?: { path: number[]; tag: string; fx: number; fy: number };
+    }
   | { k: "ptr"; panel: null };
 
 const REMOTE = Symbol("remote");

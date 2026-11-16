@@ -11,7 +11,8 @@ import {
   Mic,
   MicOff,
   RefreshCw,
-  Router,
+  PenTool,
+  UserPlus,
   ShieldCheck,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -35,6 +36,8 @@ import {
   type DevicePrefs,
 } from "@/lib/room/media";
 import { cn } from "@/lib/utils";
+import type { RoomMode } from "@/lib/rooms";
+import { InviteDialog } from "./invite-dialog";
 import type { JoinedState, RoomUser } from "./room";
 
 type Config = JoinedState["config"] & { turnError?: string };
@@ -43,10 +46,12 @@ export function Lobby({
   roomId,
   user,
   onJoin,
+  mode = "coding",
 }: {
   roomId: string;
   user: RoomUser;
   onJoin: (j: JoinedState) => void;
+  mode?: RoomMode;
 }) {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [errors, setErrors] = useState<{ audio: string | null; video: string | null }>({ audio: null, video: null });
@@ -57,6 +62,7 @@ export function Lobby({
   const [config, setConfig] = useState<Config | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
   const [acquiring, setAcquiring] = useState(true);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const handedOff = useRef(false);
@@ -228,6 +234,11 @@ export function Lobby({
         {/* checklist + join */}
         <section className="flex flex-col gap-5">
           <div className="rounded-base border-4 border-border bg-secondary-background p-6 shadow-xl">
+            {mode === "design" && (
+              <div className="mb-3 inline-flex items-center gap-1.5 rounded-base border-2 border-border bg-accent-blue px-2 py-0.5 text-xs font-heading uppercase tracking-wider text-black">
+                <PenTool className="size-3.5" /> System design: whiteboard only
+              </div>
+            )}
             <h1 className="text-3xl">Ready to join?</h1>
             <p className="mt-2 text-sm text-muted">
               Check your camera and mic first so you don&apos;t spend the first five minutes asking &ldquo;can you hear me?&rdquo;
@@ -235,22 +246,6 @@ export function Lobby({
             <ul className="mt-6 space-y-3">
               <CheckRow ok={hasCam} warn={!hasCam} label="Camera" detail={hasCam ? "Working" : errors.video ?? "Not found"} />
               <CheckRow ok={hasMic} warn={!hasMic} label="Microphone" detail={hasMic ? "Working" : errors.audio ?? "Not found"} />
-              <CheckRow
-                ok={!!config?.turn}
-                warn={!!config && !config.turn}
-                error={!!configError}
-                pending={!config && !configError}
-                label="Relay fallback"
-                detail={
-                  configError
-                    ? configError
-                    : !config
-                      ? "Checking…"
-                      : config.turn
-                        ? "Cloudflare TURN ready"
-                        : "Direct only (TURN isn't configured)"
-                }
-              />
             </ul>
             {(errors.audio || errors.video) && (
               <Button
@@ -269,13 +264,17 @@ export function Lobby({
               {!config && !configError ? <Spinner /> : null}
               Join interview <ArrowRight />
             </Button>
+            {configError && <p className="mt-3 text-sm text-accent-red">Couldn&apos;t reach the room: {configError}</p>}
           </div>
 
           <div className="rounded-base border-2 border-border bg-accent-yellow p-5 text-black shadow-lg">
             <div className="flex items-center gap-2 font-heading">
               <Link2 className="size-5" /> Invite the other person
             </div>
-            <p className="mt-1 text-sm">Anyone with this link (and an account) can join. Rooms hold two people.</p>
+            <p className="mt-1 text-sm">Invite a friend directly, or send the link. Anyone with it (and an account) can join. Rooms hold two people.</p>
+            <Button variant="neutral" className="mt-3 w-full" onClick={() => setInviteOpen(true)}>
+              <UserPlus /> Invite a friend
+            </Button>
             <div className="mt-3 flex gap-2">
               <code className="min-w-0 flex-1 truncate rounded-base border-2 border-border bg-secondary-background px-2 py-2 font-mono text-xs text-foreground">
                 {roomHref}
@@ -292,6 +291,7 @@ export function Lobby({
           </div>
         </section>
       </main>
+      <InviteDialog roomId={roomId} open={inviteOpen} onClose={() => setInviteOpen(false)} />
     </div>
   );
 }
@@ -424,7 +424,7 @@ function CheckRow({
   return (
     <li className="flex items-center gap-3">
       <span className={cn("grid size-8 shrink-0 place-items-center rounded-base border-2 border-border text-black", tone)}>
-        {pending ? <Spinner /> : ok ? <Check className="size-4" strokeWidth={3} /> : label === "Relay fallback" ? <Router className="size-4" /> : <AlertTriangle className="size-4" />}
+        {pending ? <Spinner /> : ok ? <Check className="size-4" strokeWidth={3} />  : <AlertTriangle className="size-4" />}
       </span>
       <div className="min-w-0">
         <div className="text-sm font-heading">{label}</div>

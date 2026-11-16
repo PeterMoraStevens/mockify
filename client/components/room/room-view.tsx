@@ -36,7 +36,7 @@ import {
   type RunResult,
   type SharedNote,
 } from "@/lib/room/session-doc";
-import { ROOM_WARN_MS } from "@/lib/rooms";
+import { ROOM_WARN_MS, type RoomMode } from "@/lib/rooms";
 import type { RunMode, RunResponse } from "@/lib/run-types";
 import { cn } from "@/lib/utils";
 import { CodeEditor } from "./code-editor";
@@ -78,6 +78,7 @@ export function RoomView({
   user,
   joined,
   deadline: initialDeadline,
+  initialMode,
   doc,
   awareness,
   onLeave,
@@ -86,6 +87,7 @@ export function RoomView({
   user: RoomUser;
   joined: JoinedState;
   deadline: RoomDeadline;
+  initialMode: RoomMode;
   doc: Y.Doc;
   awareness: Awareness;
   onLeave: () => void;
@@ -124,6 +126,15 @@ export function RoomView({
   const session = useY(getSession(doc), () => readSession(doc));
   const run = useY(getRun(doc), () => readRun(doc));
   const role = slot ? roleOf(slot, session.interviewerSlot) : null;
+  // Coding vs. system design: shared in the doc so both people switch together.
+  const mode: RoomMode = session.mode ?? initialMode;
+  const setMode = useCallback(
+    (m: RoomMode) => {
+      getSession(doc).set("mode", m);
+      toast(m === "design" ? "Switched to system design: whiteboard only" : "Switched to coding");
+    },
+    [doc],
+  );
   const isInterviewer = role === "interviewer";
 
   // ----------------------------------------------------------------- media
@@ -636,6 +647,8 @@ export function RoomView({
       role={role}
       deadline={{ expiresAt, maxExpiresAt: deadline.maxExpiresAt }}
       onExtend={extend}
+      mode={mode}
+      onMode={setMode}
       onSwap={swapRoles}
       onInvite={() => setInviteOpen(true)}
       onEnd={() => setConfirmEnd(true)}
@@ -742,6 +755,23 @@ export function RoomView({
     </section>
   );
 
+  // System design: the whiteboard is the whole workspace.
+  const boardArea = (
+    <section className="flex h-full min-h-0 flex-col rounded-base border-2 border-border bg-secondary-background shadow-lg">
+      <div className="flex flex-wrap items-center gap-2 border-b-2 border-border bg-background px-3 py-2">
+        <PenTool className="size-4" />
+        <span className="font-heading">System design</span>
+        <span className="text-xs text-muted">Whiteboard only. Sketch the architecture together.</span>
+        <Button size="sm" variant="neutral" className="ml-auto h-8" onClick={() => setMode("coding")} disabled={!slot || !!ended}>
+          <Code2 /> Switch to coding
+        </Button>
+      </div>
+      <div className="min-h-0 flex-1" data-pointer-panel="board">
+        <Whiteboard doc={doc} onPointer={sendBoardPointer} remotePointer={boardPtr} />
+      </div>
+    </section>
+  );
+
   const output = (
     <div className="h-full" data-pointer-panel="output">
     <OutputPanel
@@ -799,8 +829,14 @@ export function RoomView({
         <div className="space-y-3 p-3">
           {video}
           <div className="h-[50vh]">{problemPanel}</div>
-          <div className="h-[70vh]">{editorArea}</div>
-          <div className="h-[50vh]">{output}</div>
+          {mode === "design" ? (
+            <div className="h-[75vh]">{boardArea}</div>
+          ) : (
+            <>
+              <div className="h-[70vh]">{editorArea}</div>
+              <div className="h-[50vh]">{output}</div>
+            </>
+          )}
         </div>
         {overlays}
       </div>
@@ -810,12 +846,15 @@ export function RoomView({
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background bg-dots">
       {header}
-      <Group orientation="horizontal" className="min-h-0 flex-1 p-3">
-        <Panel defaultSize="27%" minSize="18%">
+      <Group key={mode} orientation="horizontal" className="min-h-0 flex-1 p-3">
+        <Panel defaultSize={mode === "design" ? "22%" : "27%"} minSize="14%">
           {problemPanel}
         </Panel>
         <ResizeHandle />
-        <Panel defaultSize="51%" minSize="30%">
+        <Panel defaultSize={mode === "design" ? "56%" : "51%"} minSize="30%">
+          {mode === "design" ? (
+            boardArea
+          ) : (
           <Group orientation="vertical">
             <Panel defaultSize="66%" minSize="25%">
               {editorArea}
@@ -825,6 +864,7 @@ export function RoomView({
               {output}
             </Panel>
           </Group>
+          )}
         </Panel>
         <ResizeHandle />
         <Panel defaultSize="22%" minSize="16%" maxSize="40%">

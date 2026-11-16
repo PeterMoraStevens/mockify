@@ -90,6 +90,33 @@ export async function verifyLogin(username: string, password: string): Promise<U
   return (await verifyPassword(password, row.password_hash)) ? toUser(row) : null;
 }
 
+/** Change username and/or display name. Usernames stay unique (case-insensitive). */
+export function updateProfile(id: string, patch: { username?: string; displayName?: string }): User | "taken" | null {
+  const cur = getUserById(id);
+  if (!cur) return null;
+  const username = patch.username ?? cur.username;
+  const displayName = patch.displayName ?? cur.displayName;
+  const clash = db().prepare("SELECT 1 FROM users WHERE username = ? AND id != ?").get(username, id);
+  if (clash) return "taken";
+  try {
+    db().prepare("UPDATE users SET username = ?, display_name = ? WHERE id = ?").run(username, displayName, id);
+  } catch {
+    return "taken";
+  }
+  return { ...cur, username, displayName };
+}
+
+/** Change password after checking the current one. Signs out every other session. */
+export async function changePassword(id: string, current: string, next: string, keepToken?: string): Promise<boolean> {
+  const row = db().prepare("SELECT * FROM users WHERE id = ?").get(id) as UserRow | undefined;
+  if (!row || !(await verifyPassword(current, row.password_hash))) return false;
+  db().prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(await hashPassword(next), id);
+  db()
+    .prepare("DELETE FROM sessions WHERE user_id = ? AND token_hash != ?")
+    .run(id, keepToken ? hashToken(keepToken) : "");
+  return true;
+}
+
 export function getUserById(id: string): User | null {
   const row = db().prepare("SELECT * FROM users WHERE id = ?").get(id) as UserRow | undefined;
   return row ? toUser(row) : null;

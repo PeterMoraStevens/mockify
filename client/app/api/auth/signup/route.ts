@@ -8,16 +8,12 @@ import {
   rateLimit,
   setSessionCookie,
 } from "@/lib/server/auth";
+import { displayNameSchema, passwordSchema, usernameSchema } from "@/lib/account-rules";
 
 const body = z.object({
-  username: z
-    .string()
-    .trim()
-    .min(3, "Username must be at least 3 characters")
-    .max(32)
-    .regex(/^[a-zA-Z0-9_.-]+$/, "Letters, digits, _ . - only"),
-  displayName: z.string().trim().min(1).max(60),
-  password: z.string().min(8, "Password must be at least 8 characters").max(200),
+  username: usernameSchema,
+  displayName: displayNameSchema,
+  password: passwordSchema,
   inviteCode: z.string().max(200).optional(),
 });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftRight, ChevronDown, Flag, Hourglass, LogOut, UserPlus } from "lucide-react";
+import { ArrowLeftRight, ChevronDown, Code2, Flag, Hourglass, LogOut, PenTool, UserPlus } from "lucide-react";
 import type * as Y from "yjs";
 import { Logo } from "@/components/logo";
 import { ModeToggle } from "@/components/theme-toggle";
@@ -17,7 +17,7 @@ import {
 import type { ConnSnapshot } from "@/lib/room/connection";
 import { useNow } from "@/lib/room/hooks";
 import type { Role } from "@/lib/room/session-doc";
-import { ROOM_EXTEND_OPTIONS_MIN, ROOM_MAX_MS, ROOM_WARN_MS } from "@/lib/rooms";
+import { ROOM_EXTEND_OPTIONS_MIN, ROOM_MAX_MS, ROOM_WARN_MS, type RoomMode } from "@/lib/rooms";
 import { cn } from "@/lib/utils";
 import { Timer } from "./timer";
 
@@ -27,6 +27,8 @@ export function RoomHeader({
   role,
   deadline,
   onExtend,
+  mode,
+  onMode,
   onSwap,
   onInvite,
   onEnd,
@@ -37,6 +39,8 @@ export function RoomHeader({
   role: Role | null;
   deadline: { expiresAt: number; maxExpiresAt: number };
   onExtend: (minutes: number) => void;
+  mode: RoomMode;
+  onMode: (m: RoomMode) => void;
   onSwap: () => void;
   onInvite: () => void;
   onEnd: () => void;
@@ -49,6 +53,7 @@ export function RoomHeader({
         <UserPlus /> Invite
       </Button>
       <ConnIndicator snap={snap} />
+      <ModeSwitch mode={mode} onMode={onMode} disabled={!role} />
 
       <div className="mx-auto flex items-center gap-2">
         <Timer doc={doc} slot={snap.slot} canControl={role === "interviewer"} clockOffsetMs={snap.clockOffsetMs} />
@@ -180,6 +185,36 @@ function ConnIndicator({ snap }: { snap: ConnSnapshot }) {
         ))}
       </span>
       {q.bars === 1 && snap.rttMs !== null && <span className="font-mono text-xs">{snap.rttMs}ms</span>}
+    </div>
+  );
+}
+
+/** Coding ⇄ system design. Either person can switch; it's shared. */
+function ModeSwitch({ mode, onMode, disabled }: { mode: RoomMode; onMode: (m: RoomMode) => void; disabled: boolean }) {
+  const items = [
+    { value: "coding" as const, label: "Coding", icon: <Code2 className="size-4" /> },
+    { value: "design" as const, label: "System design", icon: <PenTool className="size-4" /> },
+  ];
+  return (
+    <div role="radiogroup" aria-label="Interview type" className="hidden overflow-hidden rounded-base border-2 border-border shadow-shadow md:flex">
+      {items.map((it) => (
+        <button
+          key={it.value}
+          type="button"
+          role="radio"
+          aria-checked={mode === it.value}
+          disabled={disabled}
+          onClick={() => mode !== it.value && onMode(it.value)}
+          title={it.value === "design" ? "Whiteboard-only layout for system design" : "Editor, tests and whiteboard"}
+          className={cn(
+            "flex items-center gap-1.5 px-2.5 py-1 text-xs font-heading transition-colors disabled:opacity-60 [&+&]:border-l-2 [&+&]:border-border",
+            mode === it.value ? "bg-main text-main-foreground" : "bg-secondary-background hover:bg-background",
+          )}
+        >
+          {it.icon}
+          <span className="hidden xl:inline">{it.label}</span>
+        </button>
+      ))}
     </div>
   );
 }

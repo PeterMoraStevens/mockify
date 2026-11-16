@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { Logo } from "./logo";
 import { ModeToggle } from "./theme-toggle";
 import { Button } from "./ui/button";
-import { InviteBadge, InviteWatcher } from "./rooms/invite-watcher";
+import { InviteBadge, NotificationBell, NotificationWatcher } from "./notifications";
 import { UserMenu } from "./user-menu";
 import { cn } from "@/lib/utils";
 
@@ -22,11 +22,11 @@ const LINKS = [
 export default function Navbar({ user }: { user: NavUser }) {
   const path = usePathname();
   // The room has its own header (but still hears about invites).
-  if (/^\/room\/[a-z0-9]{20}/.test(path)) return user ? <InviteWatcher /> : null;
+  if (/^\/room\/[a-z0-9]{20}/.test(path)) return user ? <NotificationWatcher /> : null;
 
   return (
     <header className="sticky top-0 z-50 border-b-4 border-border bg-secondary-background">
-      {user && <InviteWatcher />}
+      {user && <NotificationWatcher />}
       <nav className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:gap-4">
         <Logo />
         <div className="ml-4 hidden items-center gap-1 md:flex">
@@ -56,6 +56,7 @@ export default function Navbar({ user }: { user: NavUser }) {
               New interview <Plus />
             </NewRoomLink>
           </Button>
+          {user && <NotificationBell />}
           {user ? (
             <UserMenu displayName={user.displayName} username={user.username} />
           ) : (

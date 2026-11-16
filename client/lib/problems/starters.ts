@@ -2,37 +2,70 @@
 // Used by the problem builder (in the browser) and by the seed-problem script.
 // Self-contained on purpose: only type imports, no path aliases.
 //
+// Types are a base type plus any number of "[]": int, long, bool, string,
+// int[], string[][], bool[], long[][][] … ("array of ___", nested).
+//
 // I/O convention (same for every problem made this way):
-//   stdin  – one line per parameter, in order
-//            int       -> "42"
-//            int[]     -> "1 2 3"          (space-separated, at least one value)
-//            string    -> the whole line   (spaces allowed)
-//            string[]  -> "ab cd ef"       (space-separated words)
-//   stdout – the return value on one line
-//            int -> "42"   bool -> "true"/"false"   int[] -> "1 2 3"   string -> as-is
+//   stdin – one line per parameter, in order
+//     scalar           int/long -> "42"   bool -> "true"/"false"   string -> the whole line (spaces allowed)
+//     1-D array        the elements, space-separated            "1 2 3"   "ab cd"   "true false"
+//     2-D and deeper   length-prefixed, recursively, on one line: [[1,2],[3]] -> "2 2 1 2 1 3"
+//                      (strings inside arrays are single words)
+//   stdout – the return value
+//     scalar -> one line;  1-D -> space-separated on one line;  2-D -> one line per inner array
 
 import type { LanguageId } from "../languages";
 
-export const PARAM_TYPES = ["int", "int[]", "string", "string[]"] as const;
-export const RETURN_TYPES = ["int", "bool", "int[]", "string"] as const;
-export type ParamType = (typeof PARAM_TYPES)[number];
-export type ReturnType = (typeof RETURN_TYPES)[number];
-export type Param = { name: string; type: ParamType };
-export type Signature = { params: Param[]; returns: ReturnType };
+export const BASE_TYPES = ["int", "long", "bool", "string"] as const;
+export type BaseType = (typeof BASE_TYPES)[number];
+/** e.g. "int", "string[]", "int[][]" */
+export type TypeName = string;
+export type Param = { name: string; type: TypeName };
+export type Signature = { params: Param[]; returns: TypeName };
+export type ParamType = TypeName;
+export type ReturnType = TypeName;
 
-export const TYPE_LABELS: Record<ParamType | ReturnType, string> = {
-  int: "integer",
-  bool: "boolean",
-  "int[]": "integer array",
-  string: "string",
-  "string[]": "list of words",
+export const MAX_PARAM_DEPTH = 3;
+export const MAX_RETURN_DEPTH = 2;
+
+type T = { base: BaseType; depth: number };
+
+export function parseType(t: string): T | null {
+  const m = /^(int|long|bool|string)((?:\[\])*)$/.exec(t);
+  return m ? { base: m[1] as BaseType, depth: m[2].length / 2 } : null;
+}
+const ty = (t: string): T => parseType(t) ?? { base: "int", depth: 0 };
+export const makeType = (base: BaseType, depth: number): TypeName => base + "[]".repeat(depth);
+
+export function isValidType(t: string, role: "param" | "return"): boolean {
+  const p = parseType(t);
+  return !!p && p.depth <= (role === "param" ? MAX_PARAM_DEPTH : MAX_RETURN_DEPTH);
+}
+
+const BASE_LABEL: Record<BaseType, [string, string]> = {
+  int: ["integer", "integers"],
+  long: ["64-bit integer", "64-bit integers"],
+  bool: ["boolean", "booleans"],
+  string: ["string", "words"],
 };
+export function typeLabel(t: TypeName): string {
+  const { base, depth } = ty(t);
+  if (depth === 0) return BASE_LABEL[base][0];
+  return `array of ${"arrays of ".repeat(depth - 1)}${BASE_LABEL[base][1]}`;
+}
 
 const PARAM_NAME_RE = /^[a-z][a-zA-Z0-9]{0,23}$/;
 const RESERVED = new Set([
   "in", "is", "as", "do", "if", "fn", "of", "or", "and", "not", "for", "int", "new", "var", "val", "let", "def",
   "end", "fun", "use", "len", "str", "map", "set", "list", "line", "lines", "main", "solve", "result", "type",
-  "data", "string", "class", "readwords", "readints", "parseints", "atoi", "object", "return", "input", "print", "func", "match", "case", "when", "where", "import",
+  "data", "string", "class", "atoi", "object", "return", "input", "print", "func", "match", "case", "when", "where", "import",
+  "tok", "tk", "res", "out", "parts", "rows", "row", "next", "long", "bool", "char", "byte", "short", "double", "float",
+  "self", "this", "null", "nil", "true", "false", "std", "vec", "array", "range", "from", "with", "yield", "lambda", "global",
+  "static", "const", "final", "default", "switch", "break", "continue", "while", "loop", "unsafe", "move", "ref", "mut", "impl",
+  "trait", "struct", "enum", "interface", "package", "go", "defer", "chan", "select", "begin", "rescue", "ensure", "unless",
+  "until", "redo", "retry", "super", "extends", "implements", "private", "public", "protected", "internal", "operator",
+  "inline", "sizeof", "typedef", "union", "extern", "register", "auto", "signed", "unsigned", "volatile", "goto", "cap", "copy",
+  "l", "r", "j", "p", "br", "nl", "buf", "returnsize", "returncolumnsizes",
 ]);
 
 export function validateSignature(sig: Signature): string | null {
@@ -41,40 +74,145 @@ export function validateSignature(sig: Signature): string | null {
   const seen = new Set<string>();
   for (const p of sig.params) {
     if (!PARAM_NAME_RE.test(p.name)) return `"${p.name}" isn't a valid name. Use camelCase letters and digits, starting lowercase.`;
-    if (RESERVED.has(p.name.toLowerCase())) return `"${p.name}" is reserved in some languages. Pick another name.`;
+    if (RESERVED.has(p.name.toLowerCase()) || /^read/i.test(p.name) || /^t?k\d+$/.test(p.name))
+      return `"${p.name}" is reserved in some languages. Pick another name.`;
     if (seen.has(p.name)) return `Duplicate parameter "${p.name}".`;
+    if (!isValidType(p.type, "param")) return `"${p.name}" has an unsupported type. Arrays can nest at most ${MAX_PARAM_DEPTH} deep.`;
     seen.add(p.name);
   }
+  if (!isValidType(sig.returns, "return")) return `The return type can nest at most ${MAX_RETURN_DEPTH} arrays deep.`;
   return null;
+}
+
+/** Languages whose starter can express this signature (C stops at 2-D, Bash at 1-D). */
+export function supportsSignature(lang: LanguageId, sig: Signature): boolean {
+  const max = Math.max(...sig.params.map((p) => ty(p.type).depth), ty(sig.returns).depth);
+  if (lang === "bash") return max <= 1;
+  if (lang === "c") return max <= 2;
+  return true;
 }
 
 /** Markdown appended to the problem description. */
 export function ioSection(sig: Signature): string {
+  const nested = sig.params.some((p) => ty(p.type).depth >= 2);
   const lines = sig.params.map((p, i) => {
+    const { base, depth } = ty(p.type);
     const fmt =
-      p.type === "int"
-        ? "an integer"
-        : p.type === "int[]"
-          ? "space-separated integers"
-          : p.type === "string"
-            ? "a string (the whole line)"
-            : "space-separated words";
+      depth === 0
+        ? base === "string"
+          ? "a string (the whole line)"
+          : base === "bool"
+            ? "`true` or `false`"
+            : "an integer"
+        : depth === 1
+          ? `space-separated ${base === "bool" ? "`true`/`false` values" : BASE_LABEL[base][1]}`
+          : `${typeLabel(p.type)}, length-prefixed (see below)`;
     return `- Line ${i + 1}: \`${p.name}\`, ${fmt}.`;
   });
+  const r = ty(sig.returns);
+  const what = r.base === "bool" ? "`true`/`false` values" : r.base === "string" ? "strings" : "integers";
   const out =
-    sig.returns === "int"
-      ? "One integer."
-      : sig.returns === "bool"
+    r.depth === 0
+      ? r.base === "bool"
         ? "`true` or `false`."
-        : sig.returns === "int[]"
-          ? "The integers on one line, separated by spaces."
-          : "The string on one line.";
-  return `### Input\n${lines.join("\n")}\n\n### Output\n${out}`;
+        : r.base === "string"
+          ? "The string on one line."
+          : "One integer."
+      : r.depth === 1
+        ? `The ${what} on one line, separated by spaces.`
+        : `One line per inner array, its ${what} separated by spaces.`;
+  const note = nested
+    ? "\n\nNested arrays are written on one line as their length followed by each element, recursively: `[[1,2],[3]]` is `2 2 1 2 1 3`. The starter code reads this for you."
+    : "";
+  return `### Input\n${lines.join("\n")}${note}\n\n### Output\n${out}`;
 }
 
-/** Turns per-parameter values typed in the builder into the stdin text. */
+/** Turns per-parameter stdin lines into the full stdin text. */
 export function buildStdin(values: string[]): string {
   return values.map((v) => v.replace(/\r?\n/g, " ")).join("\n") + "\n";
+}
+
+// ----------------------------------------------- values ⇄ readable literals
+
+function checkScalar(base: BaseType, v: unknown, where: string): string {
+  if (base === "bool") {
+    if (v === true || v === false || v === "true" || v === "false") return String(v);
+    throw new Error(`${where}: expected true or false, got ${JSON.stringify(v)}`);
+  }
+  if (base === "string") {
+    const s = String(v);
+    if (/\s/.test(s) || s === "") throw new Error(`${where}: strings inside arrays must be single words (no spaces)`);
+    return s;
+  }
+  const s = String(v).trim();
+  if (!/^-?\d+$/.test(s)) throw new Error(`${where}: expected an integer, got ${JSON.stringify(v)}`);
+  const n = BigInt(s);
+  const lim = base === "int" ? BigInt(2) ** BigInt(31) : BigInt(2) ** BigInt(63);
+  if (n < -lim || n >= lim) throw new Error(`${where}: ${s} doesn't fit in a ${base === "int" ? "32" : "64"}-bit integer`);
+  return s;
+}
+
+/**
+ * Converts what an author types for one parameter into its stdin line.
+ * Scalars and 1-D arrays can be typed as-is ("1 2 3"); arrays can also be
+ * typed as JSON ("[[1,2],[3]]", '["ab","cd"]'), and nested ones must be.
+ */
+export function encodeValue(type: TypeName, text: string, name = "value"): string {
+  const { base, depth } = ty(type);
+  if (depth === 0) return base === "string" ? text : checkScalar(base, text.trim(), name);
+  let v: unknown;
+  const t = text.trim();
+  if (t.startsWith("[")) {
+    try {
+      v = JSON.parse(t);
+    } catch {
+      throw new Error(`${name}: that isn't valid JSON${base === "string" ? ' (quote each word: ["ab","cd"])' : ""}`);
+    }
+  } else if (depth === 1) {
+    v = t ? t.split(/\s+/) : [];
+  } else {
+    throw new Error(`${name}: write nested arrays as JSON, e.g. [[1,2],[3]]`);
+  }
+  const walk = (x: unknown, d: number, top: boolean): string[] => {
+    if (d === 0) return [checkScalar(base, x, name)];
+    if (!Array.isArray(x)) throw new Error(`${name}: expected ${"[".repeat(d)}…${"]".repeat(d)}`);
+    const inner = x.flatMap((e) => walk(e, d - 1, false));
+    return top && d === 1 ? inner : [String(x.length), ...inner];
+  };
+  return walk(v, depth, true).join(" ");
+}
+
+/** The readable form of one stdin line: 42, "hi", [1,2], [["a"],["b","c"]]. */
+export function formatValue(type: TypeName, line: string): string {
+  const { base, depth } = ty(type);
+  const show = (s: string) => (base === "string" ? JSON.stringify(s) : s);
+  if (depth === 0) return base === "string" ? JSON.stringify(line) : line.trim();
+  const toks = line.trim() ? line.trim().split(/\s+/) : [];
+  if (depth === 1) return `[${toks.map(show).join(",")}]`;
+  let i = 0;
+  const rd = (d: number): string => {
+    const n = Number(toks[i++] ?? 0);
+    const parts: string[] = [];
+    for (let k = 0; k < n && i <= toks.length; k++) parts.push(d === 1 ? show(toks[i++] ?? "") : rd(d - 1));
+    return `[${parts.join(",")}]`;
+  };
+  return rd(depth);
+}
+
+/** The readable form of a program's output for the given return type. */
+export function formatOutput(type: TypeName, out: string): string {
+  const { base, depth } = ty(type);
+  const text = out.replace(/\s+$/, "");
+  const show = (s: string) => (base === "string" ? JSON.stringify(s) : s);
+  if (depth === 0) return base === "string" ? text : text.trim();
+  const row = (l: string) => `[${(l.trim() ? l.trim().split(/\s+/) : []).map(show).join(",")}]`;
+  if (depth === 1) return row(text);
+  return `[${(text ? text.split("\n") : []).map(row).join(",")}]`;
+}
+
+/** What the builder shows for a saved stdin line (nested arrays become JSON; the rest stays as-is). */
+export function editableValue(type: TypeName, line: string): string {
+  return ty(type).depth >= 2 ? formatValue(type, line) : line;
 }
 
 // ---------------------------------------------------------------------------
@@ -86,43 +224,71 @@ const ind = (s: string, n: number) =>
     .split("\n")
     .map((l) => (l ? " ".repeat(n) + l : l))
     .join("\n");
+const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 
-const has = (sig: Signature, t: ParamType) => sig.params.some((p) => p.type === t);
-const usesIntParsing = (sig: Signature) => has(sig, "int") || has(sig, "int[]");
+/** Which readers a signature needs: whole-line 1-D readers, and length-prefixed readers up to some depth. */
+function needs(sig: Signature) {
+  const all = new Set<BaseType>();
+  const nested = new Map<BaseType, number>();
+  for (const p of sig.params) {
+    const { base, depth } = ty(p.type);
+    if (depth === 1) all.add(base);
+    if (depth >= 2) nested.set(base, Math.max(nested.get(base) ?? 0, depth));
+  }
+  return { all, nested };
+}
+const ret = (sig: Signature) => ty(sig.returns);
 
 // ------------------------------------------------------------------ Python
 const python: Gen = (sig, doc, body) => {
-  const t = { int: "int", "int[]": "List[int]", string: "str", "string[]": "List[str]", bool: "bool" } as const;
-  const def = { int: "0", bool: "False", "int[]": "[]", string: '""' }[sig.returns];
+  const T = (t: T): string => (t.depth ? `List[${T({ ...t, depth: t.depth - 1 })}]` : { int: "int", long: "int", bool: "bool", string: "str" }[t.base]);
+  const sc = (b: BaseType, x: string) => ({ int: `int(${x})`, long: `int(${x})`, bool: `${x} == "true"`, string: x })[b];
+  const { nested } = needs(sig);
+  const helpers: string[] = [];
+  for (const [b, d] of nested)
+    for (let k = 1; k <= d; k++)
+      helpers.push(`def read_${b}_${k}(tk):
+    n = int(next(tk))
+    return [${k === 1 ? sc(b, "next(tk)") : `read_${b}_${k - 1}(tk)`} for _ in range(n)]`);
   const read = sig.params.map((p, i) => {
-    const l = `lines[${i}] if len(lines) > ${i} else ""`;
+    const { base, depth } = ty(p.type);
+    const l = `line(${i})`;
     const v =
-      p.type === "int"
-        ? `int((${l}).strip())`
-        : p.type === "int[]"
-          ? `list(map(int, (${l}).split()))`
-          : p.type === "string"
-            ? `(${l}).rstrip("\\r")`
-            : `(${l}).split()`;
+      depth === 0
+        ? base === "string"
+          ? l
+          : sc(base, `${l}.strip()`)
+        : depth === 1
+          ? base === "string"
+            ? `${l}.split()`
+            : `[${sc(base, "x")} for x in ${l}.split()]`
+          : `read_${base}_${depth}(iter(${l}.split()))`;
     return `    ${p.name} = ${v}`;
   });
-  const out = {
-    int: "print(result)",
-    bool: 'print("true" if result else "false")',
-    "int[]": 'print(" ".join(map(str, result)))',
-    string: "print(result)",
-  }[sig.returns];
+  const r = ret(sig);
+  const f = (x: string) => (r.base === "bool" ? `("true" if ${x} else "false")` : r.base === "string" ? x : `str(${x})`);
+  const out =
+    r.depth === 0
+      ? `print(${r.base === "bool" ? f("result") : "result"})`
+      : r.depth === 1
+        ? `print(" ".join(${f("v")} for v in result))`
+        : `for row in result:\n        print(" ".join(${f("v")} for v in row))`;
+  const def = r.depth ? "[]" : { int: "0", long: "0", bool: "False", string: '""' }[r.base];
   return `import sys
 from typing import List
 
 
-def solve(${sig.params.map((p) => `${p.name}: ${t[p.type]}`).join(", ")}) -> ${t[sig.returns]}:
+def solve(${sig.params.map((p) => `${p.name}: ${T(ty(p.type))}`).join(", ")}) -> ${T(r)}:
     # ${doc}
 ${body ? ind(body, 4) : `    return ${def}`}
 
-
+${helpers.length ? `\n${helpers.join("\n\n\n")}\n\n` : ""}
 def main() -> None:
     lines = sys.stdin.read().split("\\n")
+
+    def line(i: int) -> str:
+        return lines[i].rstrip("\\r") if i < len(lines) else ""
+
 ${read.join("\n")}
     result = solve(${sig.params.map((p) => p.name).join(", ")})
     ${out}
@@ -135,35 +301,63 @@ if __name__ == "__main__":
 
 // -------------------------------------------------------------- JS and TS
 const jsLike = (ts: boolean): Gen => (sig, doc, body) => {
-  const t = { int: "number", "int[]": "number[]", string: "string", "string[]": "string[]", bool: "boolean" } as const;
-  const def = { int: "0", bool: "false", "int[]": "[]", string: '""' }[sig.returns];
+  const T = (t: T): string => ({ int: "number", long: "number", bool: "boolean", string: "string" })[t.base] + "[]".repeat(t.depth);
+  const sc = (b: BaseType, x: string) => ({ int: `Number(${x})`, long: `Number(${x})`, bool: `${x} === "true"`, string: x })[b];
+  const a = (s: string) => (ts ? s : "");
+  const { nested } = needs(sig);
+  const helpers: string[] = [];
+  for (const [b, d] of nested)
+    for (let k = 1; k <= d; k++)
+      helpers.push(`function read${cap(b)}${k}(tk${a(": Tok")})${a(`: ${T({ base: b, depth: k })}`)} {
+  const n = Number(tk.next());
+  const res${a(`: ${T({ base: b, depth: k })}`)} = [];
+  for (let i = 0; i < n; i++) res.push(${k === 1 ? sc(b, "tk.next()") : `read${cap(b)}${k - 1}(tk)`});
+  return res;
+}`);
   const read = sig.params.map((p, i) => {
+    const { base, depth } = ty(p.type);
     const l = `line(${i})`;
     const v =
-      p.type === "int"
-        ? `Number(${l}.trim())`
-        : p.type === "int[]"
-          ? `${l}.trim().split(/\\s+/).filter(Boolean).map(Number)`
-          : p.type === "string"
-            ? l
-            : `${l}.trim().split(/\\s+/).filter(Boolean)`;
+      depth === 0
+        ? base === "string"
+          ? l
+          : sc(base, `${l}.trim()`)
+        : depth === 1
+          ? `readWords(${l})${base === "string" ? "" : `.map((x) => ${sc(base, "x")})`}`
+          : `read${cap(base)}${depth}(tok(${l}))`;
     return `  const ${p.name} = ${v};`;
   });
-  const out = {
-    int: "console.log(String(result));",
-    bool: 'console.log(result ? "true" : "false");',
-    "int[]": 'console.log(result.join(" "));',
-    string: "console.log(result);",
-  }[sig.returns];
-  const params = sig.params.map((p) => (ts ? `${p.name}: ${t[p.type]}` : p.name)).join(", ");
-  return `${ts ? '/// <reference lib="es2022" />\ndeclare const require: any;\n\n' : ""}function solve(${params})${ts ? `: ${t[sig.returns]}` : ""} {
+  const r = ret(sig);
+  const f = (x: string) => (r.base === "bool" ? `(${x} ? "true" : "false")` : `String(${x})`);
+  const out =
+    r.depth === 0
+      ? `console.log(${f("result")});`
+      : r.depth === 1
+        ? `console.log(result.map((v) => ${f("v")}).join(" "));`
+        : `console.log(result.map((row) => row.map((v) => ${f("v")}).join(" ")).join("\\n"));`;
+  const def = r.depth ? "[]" : { int: "0", long: "0", bool: "false", string: '""' }[r.base];
+  const params = sig.params.map((p) => (ts ? `${p.name}: ${T(ty(p.type))}` : p.name)).join(", ");
+  const tokDef = nested.size
+    ? `
+${ts ? "type Tok = { next: () => string };\n\n" : ""}function tok(s${a(": string")})${a(": Tok")} {
+  const t = readWords(s);
+  let i = 0;
+  return { next: () => t[i++] ?? "0" };
+}
+`
+    : "";
+  return `${ts ? '/// <reference lib="es2022" />\ndeclare const require: any;\n\n' : ""}function solve(${params})${ts ? `: ${T(r)}` : ""} {
   // ${doc}
 ${body ? ind(body, 2) : `  return ${def};`}
 }
 
-function main()${ts ? ": void" : ""} {
-  const lines${ts ? ": string[]" : ""} = require("fs").readFileSync(0, "utf8").split("\\n");
-  const line = (i${ts ? ": number" : ""})${ts ? ": string" : ""} => (lines[i] ?? "").replace(/\\r$/, "");
+function readWords(s${a(": string")})${a(": string[]")} {
+  return s.trim().split(/\\s+/).filter(Boolean);
+}
+${tokDef}${helpers.length ? `\n${helpers.join("\n\n")}\n` : ""}
+function main()${a(": void")} {
+  const lines${a(": string[]")} = require("fs").readFileSync(0, "utf8").split("\\n");
+  const line = (i${a(": number")})${a(": string")} => (lines[i] ?? "").replace(/\\r$/, "");
 ${read.join("\n")}
   const result = solve(${sig.params.map((p) => p.name).join(", ")});
   ${out}
@@ -175,51 +369,84 @@ main();
 
 // -------------------------------------------------------------------- Java
 const java: Gen = (sig, doc, body) => {
-  const t = { int: "int", "int[]": "int[]", string: "String", "string[]": "String[]", bool: "boolean" } as const;
-  const def = { int: "0", bool: "false", "int[]": "new int[0]", string: '""' }[sig.returns];
+  const B = { int: "int", long: "long", bool: "boolean", string: "String" } as const;
+  const T = (t: T) => B[t.base] + "[]".repeat(t.depth);
+  const sc = (b: BaseType, x: string) => ({ int: `Integer.parseInt(${x})`, long: `Long.parseLong(${x})`, bool: `${x}.equals("true")`, string: x })[b];
+  const { all, nested } = needs(sig);
+  const helpers: string[] = [];
+  for (const b of all)
+    helpers.push(`    static ${B[b]}[] readAll${cap(b)}(Tok tk) {
+        ${B[b]}[] res = new ${B[b]}[tk.left()];
+        for (int i = 0; i < res.length; i++) res[i] = ${sc(b, "tk.next()")};
+        return res;
+    }`);
+  for (const [b, d] of nested)
+    for (let k = 1; k <= d; k++)
+      helpers.push(`    static ${T({ base: b, depth: k })} read${cap(b)}${k}(Tok tk) {
+        int n = Integer.parseInt(tk.next());
+        ${T({ base: b, depth: k })} res = new ${B[b]}[n]${"[]".repeat(k - 1)};
+        for (int i = 0; i < n; i++) res[i] = ${k === 1 ? sc(b, "tk.next()") : `read${cap(b)}${k - 1}(tk)`};
+        return res;
+    }`);
   const read = sig.params.map((p, i) => {
+    const t = ty(p.type);
+    const l = `line(lines, ${i})`;
     const v =
-      p.type === "int"
-        ? `Integer.parseInt(line(lines, ${i}).trim())`
-        : p.type === "int[]"
-          ? `Arrays.stream(readWords(line(lines, ${i}))).mapToInt(Integer::parseInt).toArray()`
-          : p.type === "string"
-            ? `line(lines, ${i})`
-            : `readWords(line(lines, ${i}))`;
-    return `        ${t[p.type]} ${p.name} = ${v};`;
+      t.depth === 0
+        ? t.base === "string"
+          ? l
+          : sc(t.base, `${l}.trim()`)
+        : t.depth === 1
+          ? `readAll${cap(t.base)}(new Tok(${l}))`
+          : `read${cap(t.base)}${t.depth}(new Tok(${l}))`;
+    return `        ${T(t)} ${p.name} = ${v};`;
   });
-  const out = {
-    int: "System.out.println(result);",
-    bool: 'System.out.println(result ? "true" : "false");',
-    "int[]": `StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < result.length; i++) sb.append(i > 0 ? " " : "").append(result[i]);
-        System.out.println(sb);`,
-    string: "System.out.println(result);",
-  }[sig.returns];
+  const r = ret(sig);
+  const f = (x: string) => (r.base === "bool" ? `(${x} ? "true" : "false")` : x);
+  const out =
+    r.depth === 0
+      ? `System.out.println(${f("result")});`
+      : r.depth === 1
+        ? `StringBuilder _sb = new StringBuilder();
+        for (int _i = 0; _i < result.length; _i++) _sb.append(_i > 0 ? " " : "").append(${f("result[_i]")});
+        System.out.println(_sb);`
+        : `StringBuilder _sb = new StringBuilder();
+        for (int _r = 0; _r < result.length; _r++) {
+            if (_r > 0) _sb.append("\\n");
+            for (int _i = 0; _i < result[_r].length; _i++) _sb.append(_i > 0 ? " " : "").append(${f("result[_r][_i]")});
+        }
+        System.out.println(_sb);`;
+  const def = r.depth ? `new ${B[r.base]}[0]${"[]".repeat(r.depth - 1)}` : { int: "0", long: "0L", bool: "false", string: '""' }[r.base];
   return `import java.io.*;
 import java.util.*;
 
 public class Main {
-    static ${t[sig.returns]} solve(${sig.params.map((p) => `${t[p.type]} ${p.name}`).join(", ")}) {
+    static ${T(r)} solve(${sig.params.map((p) => `${T(ty(p.type))} ${p.name}`).join(", ")}) {
         // ${doc}
 ${body ? ind(body, 8) : `        return ${def};`}
+    }
+
+    static class Tok {
+        final String[] t;
+        int i = 0;
+        Tok(String s) {
+            String x = s.trim();
+            t = x.isEmpty() ? new String[0] : x.split("\\\\s+");
+        }
+        String next() { return i < t.length ? t[i++] : "0"; }
+        int left() { return t.length - i; }
     }
 
     static String line(List<String> lines, int i) {
         return i < lines.size() ? lines.get(i) : "";
     }
-
-    static String[] readWords(String s) {
-        String t = s.trim();
-        return t.isEmpty() ? new String[0] : t.split("\\\\s+");
-    }
-
+${helpers.length ? `\n${helpers.join("\n\n")}\n` : ""}
     public static void main(String[] args) throws IOException {
         BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
         List<String> lines = new ArrayList<>();
-        for (String l; (l = br.readLine()) != null; ) lines.add(l);
+        for (String _l; (_l = br.readLine()) != null; ) lines.add(_l);
 ${read.join("\n")}
-        ${t[sig.returns]} result = solve(${sig.params.map((p) => p.name).join(", ")});
+        ${T(r)} result = solve(${sig.params.map((p) => p.name).join(", ")});
         ${out}
     }
 }
@@ -228,50 +455,92 @@ ${read.join("\n")}
 
 // ----------------------------------------------------------------------- C
 const c: Gen = (sig, doc, body) => {
+  const B = { int: "int", long: "long long", bool: "bool", string: "char*" } as const;
+  const sc = (b: BaseType, x: string) =>
+    ({ int: `(int)strtol(${x}, NULL, 10)`, long: `strtoll(${x}, NULL, 10)`, bool: `(strcmp(${x}, "true") == 0)`, string: x })[b];
+  const PF = { int: "%d", long: "%lld", bool: "%s", string: "%s" } as const;
   const args: string[] = [];
   for (const p of sig.params) {
-    if (p.type === "int") args.push(`int ${p.name}`);
-    else if (p.type === "string") args.push(`char* ${p.name}`);
-    else if (p.type === "int[]") args.push(`int* ${p.name}`, `int ${p.name}Size`);
-    else args.push(`char** ${p.name}`, `int ${p.name}Size`);
+    const { base, depth } = ty(p.type);
+    if (depth === 0) args.push(`${B[base]} ${p.name}`);
+    else if (depth === 1) args.push(`${B[base]}* ${p.name}`, `int ${p.name}Size`);
+    else args.push(`${B[base]}** ${p.name}`, `int ${p.name}Size`, `int* ${p.name}ColSize`);
   }
-  if (sig.returns === "int[]") args.push("int* returnSize");
-  const ret = { int: "int", bool: "bool", "int[]": "int*", string: "char*" }[sig.returns];
-  const def = {
-    int: "    return 0;",
-    bool: "    return false;",
-    "int[]": "    *returnSize = 0;\n    return NULL;",
-    string: '    return "";',
-  }[sig.returns];
+  const r = ret(sig);
+  if (r.depth >= 1) args.push("int* returnSize");
+  if (r.depth === 2) args.push("int** returnColumnSizes");
+  const RT = B[r.base] + "*".repeat(r.depth);
+  const def =
+    r.depth === 0
+      ? `    return ${{ int: "0", long: "0", bool: "false", string: '""' }[r.base]};`
+      : r.depth === 1
+        ? "    *returnSize = 0;\n    return NULL;"
+        : "    *returnSize = 0;\n    *returnColumnSizes = NULL;\n    return NULL;";
   const read: string[] = [];
   const call: string[] = [];
   sig.params.forEach((p, i) => {
-    if (p.type === "int") {
-      read.push(`    int ${p.name} = (int)strtol(line(${i}), NULL, 10);`);
-      call.push(p.name);
-    } else if (p.type === "string") {
-      read.push(`    char* ${p.name} = line(${i});`);
-      call.push(p.name);
-    } else if (p.type === "int[]") {
-      read.push(`    int ${p.name}Size = 0;`, `    int* ${p.name} = parse_ints(line(${i}), &${p.name}Size);`);
-      call.push(p.name, `${p.name}Size`);
+    const { base, depth } = ty(p.type);
+    const n = p.name;
+    if (depth === 0 && base === "string") {
+      read.push(`    char* ${n} = line(${i});`);
+      call.push(n);
+      return;
+    }
+    read.push(`    Tok k${i} = tok(line(${i}));`);
+    if (depth === 0) {
+      read.push(`    ${B[base]} ${n} = ${sc(base, `tk_next(&k${i})`)};`);
+      call.push(n);
+    } else if (depth === 1) {
+      read.push(
+        `    int ${n}Size = k${i}.n;`,
+        `    ${B[base]}* ${n} = malloc((${n}Size + 1) * sizeof(${B[base]}));`,
+        `    for (int j = 0; j < ${n}Size; j++) ${n}[j] = ${sc(base, `k${i}.t[j]`)};`,
+      );
+      call.push(n, `${n}Size`);
     } else {
-      read.push(`    int ${p.name}Size = 0;`, `    char** ${p.name} = parse_words(line(${i}), &${p.name}Size);`);
-      call.push(p.name, `${p.name}Size`);
+      read.push(
+        `    int ${n}Size = atoi(tk_next(&k${i}));`,
+        `    ${B[base]}** ${n} = malloc((${n}Size + 1) * sizeof(${B[base]}*));`,
+        `    int* ${n}ColSize = malloc((${n}Size + 1) * sizeof(int));`,
+        `    for (int r = 0; r < ${n}Size; r++) {`,
+        `        ${n}ColSize[r] = atoi(tk_next(&k${i}));`,
+        `        ${n}[r] = malloc((${n}ColSize[r] + 1) * sizeof(${B[base]}));`,
+        `        for (int j = 0; j < ${n}ColSize[r]; j++) ${n}[r][j] = ${sc(base, `tk_next(&k${i})`)};`,
+        `    }`,
+      );
+      call.push(n, `${n}Size`, `${n}ColSize`);
     }
   });
-  if (sig.returns === "int[]") {
+  if (r.depth >= 1) {
     read.push("    int returnSize = 0;");
     call.push("&returnSize");
   }
-  const out = {
-    int: '    printf("%d\\n", result);',
-    bool: '    printf("%s\\n", result ? "true" : "false");',
-    "int[]": '    for (int i = 0; i < returnSize; i++) printf(i ? " %d" : "%d", result[i]);\n    printf("\\n");',
-    string: '    printf("%s\\n", result ? result : "");',
-  }[sig.returns];
-  const helpers = [
-    `static char* read_all(void) {
+  if (r.depth === 2) {
+    read.push("    int* returnColumnSizes = NULL;");
+    call.push("&returnColumnSizes");
+  }
+  const val = (x: string) => (r.base === "bool" ? `${x} ? "true" : "false"` : r.base === "string" ? `${x} ? ${x} : ""` : x);
+  const out =
+    r.depth === 0
+      ? `    printf("${PF[r.base]}\\n", ${val("result")});`
+      : r.depth === 1
+        ? `    for (int i = 0; i < returnSize; i++) printf(i ? " ${PF[r.base]}" : "${PF[r.base]}", ${val("result[i]")});
+    printf("\\n");`
+        : `    for (int r = 0; r < returnSize; r++) {
+        for (int i = 0; i < returnColumnSizes[r]; i++) printf(i ? " ${PF[r.base]}" : "${PF[r.base]}", ${val("result[r][i]")});
+        printf("\\n");
+    }`;
+  return `#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+${RT} solve(${args.join(", ")}) {
+    // ${doc}
+${body ? ind(body, 4) : def}
+}
+
+static char* read_all(void) {
     size_t cap = 1 << 16, len = 0;
     char* buf = malloc(cap);
     for (;;) {
@@ -282,51 +551,35 @@ const c: Gen = (sig, doc, body) => {
     }
     buf[len] = '\\0';
     return buf;
-}`,
-    `static char** g_lines;
+}
+
+static char** g_lines;
 static int g_count;
 
 static char* line(int i) {
     return i < g_count ? g_lines[i] : "";
-}`,
-  ];
-  if (has(sig, "int[]"))
-    helpers.push(`static int* parse_ints(const char* s, int* n) {
-    int cap = 16;
-    int* out = malloc(cap * sizeof(int));
-    char* end;
-    *n = 0;
-    for (;;) {
-        long v = strtol(s, &end, 10);
-        if (end == s) break;
-        if (*n == cap) out = realloc(out, (cap *= 2) * sizeof(int));
-        out[(*n)++] = (int)v;
-        s = end;
-    }
-    return out;
-}`);
-  if (has(sig, "string[]"))
-    helpers.push(`static char** parse_words(char* s, int* n) {
-    int cap = 16;
-    char** out = malloc(cap * sizeof(char*));
-    *n = 0;
-    for (char* w = strtok(s, " \\t"); w; w = strtok(NULL, " \\t")) {
-        if (*n == cap) out = realloc(out, (cap *= 2) * sizeof(char*));
-        out[(*n)++] = w;
-    }
-    return out;
-}`);
-  return `#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-${ret} solve(${args.join(", ")}) {
-    // ${doc}
-${body ? ind(body, 4) : def}
 }
 
-${helpers.join("\n\n")}
+typedef struct {
+    char** t;
+    int n, i;
+} Tok;
+
+__attribute__((unused)) static Tok tok(const char* s) {
+    Tok k = {0};
+    char* copy = strdup(s);
+    int cap = 16;
+    k.t = malloc(cap * sizeof(char*));
+    for (char* w = strtok(copy, " \\t"); w; w = strtok(NULL, " \\t")) {
+        if (k.n == cap) k.t = realloc(k.t, (cap *= 2) * sizeof(char*));
+        k.t[k.n++] = w;
+    }
+    return k;
+}
+
+__attribute__((unused)) static char* tk_next(Tok* k) {
+    return k->i < k->n ? k->t[k->i++] : "0";
+}
 
 int main(void) {
     char* input = read_all();
@@ -343,7 +596,7 @@ int main(void) {
         p = nl + 1;
     }
 ${read.join("\n")}
-    ${ret} result = solve(${call.join(", ")});
+    ${RT} result = solve(${call.join(", ")});
 ${out}
     return 0;
 }
@@ -352,30 +605,54 @@ ${out}
 
 // --------------------------------------------------------------------- C++
 const cpp: Gen = (sig, doc, body) => {
-  const t = { int: "int", "int[]": "vector<int>", string: "string", "string[]": "vector<string>", bool: "bool" } as const;
-  const arg = (p: Param) => (p.type === "int[]" || p.type === "string[]" ? `${t[p.type]}& ${p.name}` : `${t[p.type]} ${p.name}`);
-  const def = { int: "0", bool: "false", "int[]": "{}", string: '""' }[sig.returns];
-  const read = sig.params.map((p, i) => {
-    const v =
-      p.type === "int"
-        ? `stoi(line(${i}))`
-        : p.type === "int[]"
-          ? `readInts(line(${i}))`
-          : p.type === "string"
-            ? `line(${i})`
-            : `readWords(line(${i}))`;
-    return `    ${t[p.type]} ${p.name} = ${v};`;
+  const B = { int: "int", long: "long long", bool: "bool", string: "string" } as const;
+  const T = (t: T): string => (t.depth ? `vector<${T({ ...t, depth: t.depth - 1 })}>` : B[t.base]);
+  const sc = (b: BaseType, x: string) => ({ int: `stoi(${x})`, long: `stoll(${x})`, bool: `(${x} == "true")`, string: x })[b];
+  const { all, nested } = needs(sig);
+  const helpers: string[] = [];
+  for (const b of all)
+    helpers.push(`static vector<${B[b]}> readAll${cap(b)}(Tok tk) {
+    vector<${B[b]}> res;
+    while (tk.i < tk.t.size()) res.push_back(${sc(b, "tk.next()")});
+    return res;
+}`);
+  for (const [b, d] of nested)
+    for (let k = 1; k <= d; k++)
+      helpers.push(`static ${T({ base: b, depth: k })} read${cap(b)}${k}(Tok& tk) {
+    int n = stoi(tk.next());
+    ${T({ base: b, depth: k })} res;
+    for (int i = 0; i < n; i++) res.push_back(${k === 1 ? sc(b, "tk.next()") : `read${cap(b)}${k - 1}(tk)`});
+    return res;
+}`);
+  const read = sig.params.flatMap((p, i) => {
+    const t = ty(p.type);
+    const l = `line(${i})`;
+    if (t.depth === 0) return [`    ${T(t)} ${p.name} = ${t.base === "string" ? l : sc(t.base, `Tok(${l}).next()`)};`];
+    if (t.depth === 1) return [`    ${T(t)} ${p.name} = readAll${cap(t.base)}(Tok(${l}));`];
+    return [`    Tok tk${i}(${l});`, `    ${T(t)} ${p.name} = read${cap(t.base)}${t.depth}(tk${i});`];
   });
-  const out = {
-    int: "    cout << result << \"\\n\";",
-    bool: '    cout << (result ? "true" : "false") << "\\n";',
-    "int[]": '    for (size_t i = 0; i < result.size(); i++) cout << (i ? " " : "") << result[i];\n    cout << "\\n";',
-    string: '    cout << result << "\\n";',
-  }[sig.returns];
+  const r = ret(sig);
+  const f = (x: string) => (r.base === "bool" ? `(${x} ? "true" : "false")` : x);
+  const out =
+    r.depth === 0
+      ? `    cout << ${f("result")} << "\\n";`
+      : r.depth === 1
+        ? `    for (size_t i = 0; i < result.size(); i++) cout << (i ? " " : "") << ${f("result[i]")};
+    cout << "\\n";`
+        : `    for (auto& row : result) {
+        for (size_t i = 0; i < row.size(); i++) cout << (i ? " " : "") << ${f("row[i]")};
+        cout << "\\n";
+    }`;
+  const def = r.depth ? "{}" : { int: "0", long: "0", bool: "false", string: '""' }[r.base];
+  const arg = (p: Param) => {
+    const t = ty(p.type);
+    return `${T(t)}${t.depth || t.base === "string" ? "&" : ""} ${p.name}`;
+  };
   return `#include <algorithm>
 #include <climits>
 #include <iostream>
 #include <map>
+#include <numeric>
 #include <queue>
 #include <set>
 #include <sstream>
@@ -386,26 +663,24 @@ const cpp: Gen = (sig, doc, body) => {
 #include <vector>
 using namespace std;
 
-${t[sig.returns]} solve(${sig.params.map(arg).join(", ")}) {
+${T(r)} solve(${sig.params.map(arg).join(", ")}) {
     // ${doc}
 ${body ? ind(body, 4) : `    return ${def};`}
 }
 
+struct Tok {
+    vector<string> t;
+    size_t i = 0;
+    explicit Tok(const string& s) {
+        istringstream is(s);
+        for (string w; is >> w;) t.push_back(w);
+    }
+    string next() { return i < t.size() ? t[i++] : "0"; }
+};
+
 static vector<string> g_lines;
 static string line(size_t i) { return i < g_lines.size() ? g_lines[i] : string(); }
-static vector<int> readInts(const string& s) {
-    vector<int> v;
-    istringstream is(s);
-    for (int x; is >> x;) v.push_back(x);
-    return v;
-}
-static vector<string> readWords(const string& s) {
-    vector<string> v;
-    istringstream is(s);
-    for (string w; is >> w;) v.push_back(w);
-    return v;
-}
-
+${helpers.length ? `\n${helpers.join("\n\n")}\n` : ""}
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
@@ -414,7 +689,7 @@ int main() {
         g_lines.push_back(l);
     }
 ${read.join("\n")}
-    ${t[sig.returns]} result = solve(${sig.params.map((p) => p.name).join(", ")});
+    ${T(r)} result = solve(${sig.params.map((p) => p.name).join(", ")});
 ${out}
     return 0;
 }
@@ -423,41 +698,70 @@ ${out}
 
 // ---------------------------------------------------------------------- C#
 const csharp: Gen = (sig, doc, body) => {
-  const t = { int: "int", "int[]": "int[]", string: "string", "string[]": "string[]", bool: "bool" } as const;
-  const def = { int: "0", bool: "false", "int[]": "new int[0]", string: '""' }[sig.returns];
+  const B = { int: "int", long: "long", bool: "bool", string: "string" } as const;
+  const T = (t: T) => B[t.base] + "[]".repeat(t.depth);
+  const sc = (b: BaseType, x: string) => ({ int: `int.Parse(${x})`, long: `long.Parse(${x})`, bool: `${x} == "true"`, string: x })[b];
+  const { all, nested } = needs(sig);
+  const helpers: string[] = [];
+  for (const b of all)
+    helpers.push(`    static ${B[b]}[] ReadAll${cap(b)}(Tok tk) {
+        var res = new ${B[b]}[tk.Left];
+        for (int i = 0; i < res.Length; i++) res[i] = ${sc(b, "tk.Next()")};
+        return res;
+    }`);
+  for (const [b, d] of nested)
+    for (let k = 1; k <= d; k++)
+      helpers.push(`    static ${T({ base: b, depth: k })} Read${cap(b)}${k}(Tok tk) {
+        int n = int.Parse(tk.Next());
+        var res = new ${B[b]}[n]${"[]".repeat(k - 1)};
+        for (int i = 0; i < n; i++) res[i] = ${k === 1 ? sc(b, "tk.Next()") : `Read${cap(b)}${k - 1}(tk)`};
+        return res;
+    }`);
   const read = sig.params.map((p, i) => {
+    const t = ty(p.type);
+    const l = `Line(${i})`;
     const v =
-      p.type === "int"
-        ? `int.Parse(Line(${i}).Trim())`
-        : p.type === "int[]"
-          ? `Words(Line(${i})).Select(int.Parse).ToArray()`
-          : p.type === "string"
-            ? `Line(${i})`
-            : `Words(Line(${i}))`;
-    return `        ${t[p.type]} ${p.name} = ${v};`;
+      t.depth === 0
+        ? t.base === "string"
+          ? l
+          : sc(t.base, `${l}.Trim()`)
+        : t.depth === 1
+          ? `ReadAll${cap(t.base)}(new Tok(${l}))`
+          : `Read${cap(t.base)}${t.depth}(new Tok(${l}))`;
+    return `        ${T(t)} ${p.name} = ${v};`;
   });
-  const out = {
-    int: "Console.WriteLine(result);",
-    bool: 'Console.WriteLine(result ? "true" : "false");',
-    "int[]": 'Console.WriteLine(string.Join(" ", result));',
-    string: "Console.WriteLine(result);",
-  }[sig.returns];
+  const r = ret(sig);
+  const f = (x: string) => (r.base === "bool" ? `(${x} ? "true" : "false")` : `${x}.ToString()`);
+  const out =
+    r.depth === 0
+      ? `Console.WriteLine(${r.base === "bool" ? f("result") : "result"});`
+      : r.depth === 1
+        ? `Console.WriteLine(string.Join(" ", result.Select(_v => ${f("_v")})));`
+        : `Console.WriteLine(string.Join("\\n", result.Select(_row => string.Join(" ", _row.Select(_v => ${f("_v")})))));`;
+  const def = r.depth ? `new ${B[r.base]}[0]${"[]".repeat(r.depth - 1)}` : { int: "0", long: "0", bool: "false", string: '""' }[r.base];
   return `using System;
 using System.Collections.Generic;
 using System.Linq;
 
 public class Program {
-    static ${t[sig.returns]} Solve(${sig.params.map((p) => `${t[p.type]} ${p.name}`).join(", ")}) {
+    static ${T(r)} Solve(${sig.params.map((p) => `${T(ty(p.type))} ${p.name}`).join(", ")}) {
         // ${doc}
 ${body ? ind(body, 8) : `        return ${def};`}
     }
 
+    class Tok {
+        readonly string[] t;
+        int i;
+        public Tok(string s) { t = s.Split(new[] { ' ', '\\t' }, StringSplitOptions.RemoveEmptyEntries); }
+        public string Next() => i < t.Length ? t[i++] : "0";
+        public int Left => t.Length - i;
+    }
+
     static string[] lines = new string[0];
     static string Line(int i) => i < lines.Length ? lines[i] : "";
-    static string[] Words(string s) => s.Split(new[] { ' ', '\\t' }, StringSplitOptions.RemoveEmptyEntries);
-
+${helpers.length ? `\n${helpers.join("\n\n")}\n` : ""}
     public static void Main() {
-        lines = Console.In.ReadToEnd().Split('\\n').Select(l => l.TrimEnd('\\r')).ToArray();
+        lines = Console.In.ReadToEnd().Split('\\n').Select(_l => _l.TrimEnd('\\r')).ToArray();
 ${read.join("\n")}
         var result = Solve(${sig.params.map((p) => p.name).join(", ")});
         ${out}
@@ -468,53 +772,90 @@ ${read.join("\n")}
 
 // ---------------------------------------------------------------------- Go
 const go: Gen = (sig, doc, body) => {
-  const t = { int: "int", "int[]": "[]int", string: "string", "string[]": "[]string", bool: "bool" } as const;
-  const def = { int: "0", bool: "false", "int[]": "[]int{}", string: '""' }[sig.returns];
-  const needStrconv = usesIntParsing(sig) || sig.returns === "int[]";
-  const imports = ["fmt", "io", "os", ...(needStrconv ? ["strconv"] : []), "strings"];
-  const read = sig.params.map((p, i) => {
-    const v =
-      p.type === "int"
-        ? `atoi(strings.TrimSpace(line(${i})))`
-        : p.type === "int[]"
-          ? `parseInts(line(${i}))`
-          : p.type === "string"
-            ? `line(${i})`
-            : `strings.Fields(line(${i}))`;
-    return `\t${p.name} := ${v}`;
-  });
-  const out = {
-    int: "\tfmt.Println(result)",
-    bool: "\tfmt.Println(result)",
-    "int[]": `\tparts := make([]string, len(result))
-\tfor i, v := range result {
-\t\tparts[i] = strconv.Itoa(v)
-\t}
-\tfmt.Println(strings.Join(parts, " "))`,
-    string: "\tfmt.Println(result)",
-  }[sig.returns];
+  const B = { int: "int", long: "int64", bool: "bool", string: "string" } as const;
+  const T = (t: T) => "[]".repeat(t.depth) + B[t.base];
+  const sc = (b: BaseType, x: string) => ({ int: `atoi(${x})`, long: `int64(atoi(${x}))`, bool: `${x} == "true"`, string: x })[b];
+  const { all, nested } = needs(sig);
+  const needAtoi = sig.params.some((p) => ty(p.type).depth >= 2 || ty(p.type).base === "int" || ty(p.type).base === "long");
   const helpers: string[] = [];
-  if (usesIntParsing(sig))
+  if (needAtoi)
     helpers.push(`func atoi(s string) int {
-\tv, _ := strconv.Atoi(s)
+\tv, _ := strconv.Atoi(strings.TrimSpace(s))
 \treturn v
 }`);
-  if (has(sig, "int[]"))
-    helpers.push(`func parseInts(s string) []int {
-\tf := strings.Fields(s)
-\tout := make([]int, len(f))
-\tfor i, w := range f {
-\t\tout[i] = atoi(w)
+  if (nested.size)
+    helpers.push(`type Tok struct {
+\tt []string
+\ti int
+}
+
+func (k *Tok) next() string {
+\tif k.i < len(k.t) {
+\t\tk.i++
+\t\treturn k.t[k.i-1]
 \t}
-\treturn out
+\treturn "0"
 }`);
+  for (const b of all)
+    helpers.push(`func readAll${cap(b)}(s string) []${B[b]} {
+\tf := strings.Fields(s)
+\tres := make([]${B[b]}, len(f))
+\tfor i, w := range f {
+\t\tres[i] = ${sc(b, "w")}
+\t}
+\treturn res
+}`);
+  for (const [b, d] of nested)
+    for (let k = 1; k <= d; k++)
+      helpers.push(`func read${cap(b)}${k}(tk *Tok) ${T({ base: b, depth: k })} {
+\tn := atoi(tk.next())
+\tres := make(${T({ base: b, depth: k })}, n)
+\tfor i := 0; i < n; i++ {
+\t\tres[i] = ${k === 1 ? sc(b, "tk.next()") : `read${cap(b)}${k - 1}(tk)`}
+\t}
+\treturn res
+}`);
+  const read = sig.params.map((p, i) => {
+    const t = ty(p.type);
+    const l = `line(${i})`;
+    const v =
+      t.depth === 0
+        ? t.base === "string"
+          ? l
+          : sc(t.base, `strings.TrimSpace(${l})`)
+        : t.depth === 1
+          ? `readAll${cap(t.base)}(${l})`
+          : `read${cap(t.base)}${t.depth}(&Tok{t: strings.Fields(${l})})`;
+    return `\t${p.name} := ${v}`;
+  });
+  const r = ret(sig);
+  const out =
+    r.depth === 0
+      ? "\tfmt.Println(result)"
+      : r.depth === 1
+        ? `\tparts := make([]string, len(result))
+\tfor i, v := range result {
+\t\tparts[i] = fmt.Sprint(v)
+\t}
+\tfmt.Println(strings.Join(parts, " "))`
+        : `\trows := make([]string, len(result))
+\tfor r, row := range result {
+\t\tparts := make([]string, len(row))
+\t\tfor i, v := range row {
+\t\t\tparts[i] = fmt.Sprint(v)
+\t\t}
+\t\trows[r] = strings.Join(parts, " ")
+\t}
+\tfmt.Println(strings.Join(rows, "\\n"))`;
+  const def = r.depth ? `${T(r)}{}` : { int: "0", long: "0", bool: "false", string: '""' }[r.base];
+  const imports = ["fmt", "io", "os", ...(needAtoi ? ["strconv"] : []), "strings"];
   return `package main
 
 import (
 ${imports.map((i) => `\t"${i}"`).join("\n")}
 )
 
-func solve(${sig.params.map((p) => `${p.name} ${t[p.type]}`).join(", ")}) ${t[sig.returns]} {
+func solve(${sig.params.map((p) => `${p.name} ${T(ty(p.type))}`).join(", ")}) ${T(r)} {
 \t// ${doc}
 ${body ? body.split("\n").map((l) => (l ? `\t${l}` : l)).join("\n") : `\treturn ${def}`}
 }
@@ -537,30 +878,60 @@ ${out}
 
 // -------------------------------------------------------------------- Rust
 const rust: Gen = (sig, doc, body) => {
-  const t = { int: "i32", "int[]": "Vec<i32>", string: "String", "string[]": "Vec<String>", bool: "bool" } as const;
-  const def = { int: "0", bool: "false", "int[]": "vec![]", string: "String::new()" }[sig.returns];
+  const B = { int: "i32", long: "i64", bool: "bool", string: "String" } as const;
+  const T = (t: T): string => (t.depth ? `Vec<${T({ ...t, depth: t.depth - 1 })}>` : B[t.base]);
+  const sc = (b: BaseType, x: string) =>
+    ({ int: `${x}.parse::<i32>().unwrap()`, long: `${x}.parse::<i64>().unwrap()`, bool: `(${x} == "true")`, string: `${x}.to_string()` })[b];
+  const { nested } = needs(sig);
+  const helpers: string[] = [];
+  for (const [b, d] of nested)
+    for (let k = 1; k <= d; k++)
+      helpers.push(`fn read_${b}_${k}(tk: &mut Tok) -> ${T({ base: b, depth: k })} {
+    let n: usize = tk.take().parse().unwrap();
+    (0..n).map(|_| ${k === 1 ? sc(b, "tk.take()") : `read_${b}_${k - 1}(tk)`}).collect()
+}`);
   const read = sig.params.map((p, i) => {
+    const t = ty(p.type);
+    const l = `line(&lines, ${i})`;
     const v =
-      p.type === "int"
-        ? `line(&lines, ${i}).trim().parse().unwrap()`
-        : p.type === "int[]"
-          ? `line(&lines, ${i}).split_whitespace().map(|x| x.parse().unwrap()).collect()`
-          : p.type === "string"
-            ? `line(&lines, ${i}).to_string()`
-            : `line(&lines, ${i}).split_whitespace().map(String::from).collect()`;
-    return `    let ${p.name}: ${t[p.type]} = ${v};`;
+      t.depth === 0
+        ? t.base === "string"
+          ? `${l}.to_string()`
+          : sc(t.base, `${l}.trim()`)
+        : t.depth === 1
+          ? `${l}.split_whitespace().map(|x| ${sc(t.base, "x")}).collect()`
+          : `read_${t.base}_${t.depth}(&mut Tok::new(${l}))`;
+    return `    let ${p.name}: ${T(t)} = ${v};`;
   });
-  const out = {
-    int: '    println!("{}", result);',
-    bool: '    println!("{}", result);',
-    "int[]": '    let parts: Vec<String> = result.iter().map(|v| v.to_string()).collect();\n    println!("{}", parts.join(" "));',
-    string: '    println!("{}", result);',
-  }[sig.returns];
+  const r = ret(sig);
+  const out =
+    r.depth === 0
+      ? '    println!("{}", result);'
+      : r.depth === 1
+        ? '    let parts: Vec<String> = result.iter().map(|v| v.to_string()).collect();\n    println!("{}", parts.join(" "));'
+        : '    let rows: Vec<String> = result\n        .iter()\n        .map(|row| row.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(" "))\n        .collect();\n    println!("{}", rows.join("\\n"));';
+  const def = r.depth ? "vec![]" : { int: "0", long: "0", bool: "false", string: "String::new()" }[r.base];
+  const tokDef = nested.size
+    ? `
+struct Tok<'a> {
+    it: std::str::SplitWhitespace<'a>,
+}
+
+impl<'a> Tok<'a> {
+    fn new(s: &'a str) -> Self {
+        Tok { it: s.split_whitespace() }
+    }
+    fn take(&mut self) -> &'a str {
+        self.it.next().unwrap_or("0")
+    }
+}
+`
+    : "";
   return `#![allow(unused_imports, unused_variables, unused_mut, dead_code)]
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::io::{self, Read};
 
-fn solve(${sig.params.map((p) => `${p.name}: ${t[p.type]}`).join(", ")}) -> ${t[sig.returns]} {
+fn solve(${sig.params.map((p) => `${p.name}: ${T(ty(p.type))}`).join(", ")}) -> ${T(r)} {
     // ${doc}
 ${body ? ind(body, 4) : `    ${def}`}
 }
@@ -568,7 +939,7 @@ ${body ? ind(body, 4) : `    ${def}`}
 fn line<'a>(lines: &[&'a str], i: usize) -> &'a str {
     lines.get(i).copied().unwrap_or("")
 }
-
+${tokDef}${helpers.length ? `\n${helpers.join("\n\n")}\n` : ""}
 fn main() {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input).unwrap();
@@ -582,32 +953,58 @@ ${out}
 
 // ------------------------------------------------------------------ Kotlin
 const kotlin: Gen = (sig, doc, body) => {
-  const t = { int: "Int", "int[]": "IntArray", string: "String", "string[]": "Array<String>", bool: "Boolean" } as const;
-  const def = { int: "0", bool: "false", "int[]": "intArrayOf()", string: '""' }[sig.returns];
+  const B = { int: "Int", long: "Long", bool: "Boolean", string: "String" } as const;
+  const ARR = { int: "IntArray", long: "LongArray", bool: "BooleanArray", string: "Array<String>" } as const;
+  const T = (t: T): string => (t.depth === 0 ? B[t.base] : t.depth === 1 ? ARR[t.base] : `Array<${T({ ...t, depth: t.depth - 1 })}>`);
+  const sc = (b: BaseType, x: string) => ({ int: `${x}.toInt()`, long: `${x}.toLong()`, bool: `(${x} == "true")`, string: x })[b];
+  const mk1 = (b: BaseType, n: string, x: string) => (b === "string" ? `Array(${n}) { ${x} }` : `${ARR[b]}(${n}) { ${sc(b, x)} }`);
+  const { all, nested } = needs(sig);
+  const helpers: string[] = [];
+  for (const b of all) helpers.push(`fun readAll${cap(b)}(tk: Tok): ${ARR[b]} = ${mk1(b, "tk.left()", "tk.next()")}`);
+  for (const [b, d] of nested)
+    for (let k = 1; k <= d; k++)
+      helpers.push(`fun read${cap(b)}${k}(tk: Tok): ${T({ base: b, depth: k })} {
+    val n = tk.next().toInt()
+    return ${k === 1 ? mk1(b, "n", "tk.next()") : `Array(n) { read${cap(b)}${k - 1}(tk) }`}
+}`);
   const read = sig.params.map((p, i) => {
+    const t = ty(p.type);
+    const l = `line(${i})`;
     const v =
-      p.type === "int"
-        ? `line(${i}).trim().toInt()`
-        : p.type === "int[]"
-          ? `readWords(line(${i})).map { it.toInt() }.toIntArray()`
-          : p.type === "string"
-            ? `line(${i})`
-            : `readWords(line(${i})).toTypedArray()`;
+      t.depth === 0
+        ? t.base === "string"
+          ? l
+          : sc(t.base, `${l}.trim()`)
+        : t.depth === 1
+          ? `readAll${cap(t.base)}(Tok(${l}))`
+          : `read${cap(t.base)}${t.depth}(Tok(${l}))`;
     return `    val ${p.name} = ${v}`;
   });
-  const out = {
-    int: "    println(result)",
-    bool: "    println(result)",
-    "int[]": '    println(result.joinToString(" "))',
-    string: "    println(result)",
-  }[sig.returns];
-  return `fun solve(${sig.params.map((p) => `${p.name}: ${t[p.type]}`).join(", ")}): ${t[sig.returns]} {
+  const r = ret(sig);
+  const out =
+    r.depth === 0
+      ? "    println(result)"
+      : r.depth === 1
+        ? '    println(result.joinToString(" "))'
+        : '    println(result.joinToString("\\n") { it.joinToString(" ") })';
+  const def =
+    r.depth === 0
+      ? { int: "0", long: "0L", bool: "false", string: '""' }[r.base]
+      : r.depth === 1
+        ? { int: "intArrayOf()", long: "longArrayOf()", bool: "booleanArrayOf()", string: "arrayOf<String>()" }[r.base]
+        : `arrayOf<${T({ ...r, depth: r.depth - 1 })}>()`;
+  return `fun solve(${sig.params.map((p) => `${p.name}: ${T(ty(p.type))}`).join(", ")}): ${T(r)} {
     // ${doc}
 ${body ? ind(body, 4) : `    return ${def}`}
 }
 
-fun readWords(s: String): List<String> = s.trim().split(Regex("\\\\s+")).filter { it.isNotEmpty() }
-
+class Tok(s: String) {
+    private val t = s.trim().split(Regex("\\\\s+")).filter { it.isNotEmpty() }
+    private var i = 0
+    fun next(): String = if (i < t.size) t[i++] else "0"
+    fun left(): Int = t.size - i
+}
+${helpers.length ? `\n${helpers.join("\n\n")}\n` : ""}
 fun main() {
     val lines = generateSequence(::readLine).map { it.trimEnd('\\r') }.toList()
     fun line(i: Int): String = lines.getOrElse(i) { "" }
@@ -620,32 +1017,64 @@ ${out}
 
 // ------------------------------------------------------------------- Swift
 const swift: Gen = (sig, doc, body) => {
-  const t = { int: "Int", "int[]": "[Int]", string: "String", "string[]": "[String]", bool: "Bool" } as const;
-  const def = { int: "0", bool: "false", "int[]": "[]", string: '""' }[sig.returns];
+  const B = { int: "Int", long: "Int", bool: "Bool", string: "String" } as const;
+  const T = (t: T) => "[".repeat(t.depth) + B[t.base] + "]".repeat(t.depth);
+  const sc = (b: BaseType, x: string) => ({ int: `Int(${x})!`, long: `Int(${x})!`, bool: `(${x} == "true")`, string: x })[b];
+  const { all, nested } = needs(sig);
+  const helpers: string[] = [];
+  for (const b of all)
+    helpers.push(`func readAll${cap(b)}(_ tk: Tok) -> [${B[b]}] {
+    var res: [${B[b]}] = []
+    while tk.left > 0 { res.append(${sc(b, "tk.next()")}) }
+    return res
+}`);
+  for (const [b, d] of nested)
+    for (let k = 1; k <= d; k++)
+      helpers.push(`func read${cap(b)}${k}(_ tk: Tok) -> ${T({ base: b, depth: k })} {
+    let n = Int(tk.next())!
+    var res: ${T({ base: b, depth: k })} = []
+    for _ in 0..<n { res.append(${k === 1 ? sc(b, "tk.next()") : `read${cap(b)}${k - 1}(tk)`}) }
+    return res
+}`);
   const read = sig.params.map((p, i) => {
+    const t = ty(p.type);
+    const l = `line(${i})`;
     const v =
-      p.type === "int"
-        ? `Int(line(${i}).trimmingCharacters(in: .whitespaces)) ?? 0`
-        : p.type === "int[]"
-          ? `line(${i}).split(whereSeparator: { $0 == " " || $0 == "\\t" }).compactMap { Int($0) }`
-          : p.type === "string"
-            ? `line(${i})`
-            : `line(${i}).split(whereSeparator: { $0 == " " || $0 == "\\t" }).map(String.init)`;
-    return `let ${p.name} = ${v}`;
+      t.depth === 0
+        ? t.base === "string"
+          ? l
+          : sc(t.base, `${l}.trimmingCharacters(in: .whitespaces)`)
+        : t.depth === 1
+          ? `readAll${cap(t.base)}(Tok(${l}))`
+          : `read${cap(t.base)}${t.depth}(Tok(${l}))`;
+    return `let ${p.name}: ${T(t)} = ${v}`;
   });
-  const out = {
-    int: "print(result)",
-    bool: "print(result)",
-    "int[]": 'print(result.map(String.init).joined(separator: " "))',
-    string: "print(result)",
-  }[sig.returns];
+  const r = ret(sig);
+  const out =
+    r.depth === 0
+      ? "print(result)"
+      : r.depth === 1
+        ? 'print(result.map { String($0) }.joined(separator: " "))'
+        : 'print(result.map { row in row.map { String($0) }.joined(separator: " ") }.joined(separator: "\\n"))';
+  const def = r.depth ? "[]" : { int: "0", long: "0", bool: "false", string: '""' }[r.base];
   return `import Foundation
 
-func solve(${sig.params.map((p) => `_ ${p.name}: ${t[p.type]}`).join(", ")}) -> ${t[sig.returns]} {
+func solve(${sig.params.map((p) => `_ ${p.name}: ${T(ty(p.type))}`).join(", ")}) -> ${T(r)} {
     // ${doc}
 ${body ? ind(body, 4) : `    return ${def}`}
 }
 
+final class Tok {
+    let t: [String]
+    var i = 0
+    init(_ s: String) { t = s.split(whereSeparator: { $0 == " " || $0 == "\\t" }).map(String.init) }
+    func next() -> String {
+        if i < t.count { i += 1; return t[i - 1] }
+        return "0"
+    }
+    var left: Int { t.count - i }
+}
+${helpers.length ? `\n${helpers.join("\n\n")}\n` : ""}
 var lines: [String] = []
 while let l = readLine() { lines.append(l) }
 func line(_ i: Int) -> String { i < lines.count ? lines[i] : "" }
@@ -658,24 +1087,36 @@ ${out}
 
 // -------------------------------------------------------------------- Ruby
 const ruby: Gen = (sig, doc, body) => {
-  const def = { int: "0", bool: "false", "int[]": "[]", string: '""' }[sig.returns];
+  const sc = (b: BaseType, x: string) => ({ int: `${x}.to_i`, long: `${x}.to_i`, bool: `(${x} == "true")`, string: x })[b];
+  const { nested } = needs(sig);
+  const helpers: string[] = [];
+  for (const [b, d] of nested)
+    for (let k = 1; k <= d; k++)
+      helpers.push(`def read_${b}_${k}(tk)
+  Array.new((tk.shift || "0").to_i) { ${k === 1 ? sc(b, '(tk.shift || "0")') : `read_${b}_${k - 1}(tk)`} }
+end`);
   const read = sig.params.map((p, i) => {
+    const t = ty(p.type);
+    const l = `line(lines, ${i})`;
     const v =
-      p.type === "int"
-        ? `line(lines, ${i}).to_i`
-        : p.type === "int[]"
-          ? `line(lines, ${i}).split.map(&:to_i)`
-          : p.type === "string"
-            ? `line(lines, ${i})`
-            : `line(lines, ${i}).split`;
+      t.depth === 0
+        ? t.base === "string"
+          ? l
+          : sc(t.base, `${l}.strip`)
+        : t.depth === 1
+          ? `${l}.split${t.base === "string" ? "" : `.map { |x| ${sc(t.base, "x")} }`}`
+          : `read_${t.base}_${t.depth}(${l}.split)`;
     return `${p.name} = ${v}`;
   });
-  const out = {
-    int: "puts result",
-    bool: 'puts(result ? "true" : "false")',
-    "int[]": 'puts result.join(" ")',
-    string: "puts result",
-  }[sig.returns];
+  const r = ret(sig);
+  const f = (x: string) => (r.base === "bool" ? `(${x} ? "true" : "false")` : `${x}.to_s`);
+  const out =
+    r.depth === 0
+      ? `puts ${f("result")}`
+      : r.depth === 1
+        ? `puts result.map { |v| ${f("v")} }.join(" ")`
+        : `puts result.map { |row| row.map { |v| ${f("v")} }.join(" ") }.join("\\n")`;
+  const def = r.depth ? "[]" : { int: "0", long: "0", bool: "false", string: '""' }[r.base];
   return `def solve(${sig.params.map((p) => p.name).join(", ")})
   # ${doc}
 ${body ? ind(body, 2) : `  ${def}`}
@@ -684,7 +1125,7 @@ end
 def line(lines, i)
   (lines[i] || "").chomp
 end
-
+${helpers.length ? `\n${helpers.join("\n\n")}\n` : ""}
 lines = STDIN.read.split("\\n", -1)
 ${read.join("\n")}
 result = solve(${sig.params.map((p) => p.name).join(", ")})
@@ -694,28 +1135,39 @@ ${out}
 
 // --------------------------------------------------------------------- PHP
 const php: Gen = (sig, doc, body) => {
-  const t = { int: "int", "int[]": "array", string: "string", "string[]": "array", bool: "bool" } as const;
-  const def = { int: "0", bool: "false", "int[]": "[]", string: '""' }[sig.returns];
-  const read = sig.params.map((p, i) => {
-    const v =
-      p.type === "int"
-        ? `intval(trim(line($lines, ${i})))`
-        : p.type === "int[]"
-          ? `array_map('intval', readWords(line($lines, ${i})))`
-          : p.type === "string"
-            ? `line($lines, ${i})`
-            : `readWords(line($lines, ${i}))`;
-    return `$${p.name} = ${v};`;
+  const B = { int: "int", long: "int", bool: "bool", string: "string" } as const;
+  const T = (t: T) => (t.depth ? "array" : B[t.base]);
+  const sc = (b: BaseType, x: string) => ({ int: `intval(${x})`, long: `intval(${x})`, bool: `(${x} === "true")`, string: x })[b];
+  const { nested } = needs(sig);
+  const helpers: string[] = [];
+  for (const [b, d] of nested)
+    for (let k = 1; k <= d; k++)
+      helpers.push(`function read${cap(b)}${k}(array &$tk): array {
+    $n = intval(array_shift($tk) ?? "0");
+    $res = [];
+    for ($i = 0; $i < $n; $i++) $res[] = ${k === 1 ? sc(b, '(array_shift($tk) ?? "0")') : `read${cap(b)}${k - 1}($tk)`};
+    return $res;
+}`);
+  const read = sig.params.flatMap((p, i) => {
+    const t = ty(p.type);
+    const l = `line($lines, ${i})`;
+    if (t.depth === 0) return [`$${p.name} = ${t.base === "string" ? l : sc(t.base, `trim(${l})`)};`];
+    if (t.depth === 1)
+      return [`$${p.name} = ${t.base === "string" ? `readWords(${l})` : `array_map(fn($x) => ${sc(t.base, "$x")}, readWords(${l}))`};`];
+    return [`$tk${i} = readWords(${l});`, `$${p.name} = read${cap(t.base)}${t.depth}($tk${i});`];
   });
-  const out = {
-    int: 'echo $result, "\\n";',
-    bool: 'echo $result ? "true" : "false", "\\n";',
-    "int[]": 'echo implode(" ", $result), "\\n";',
-    string: 'echo $result, "\\n";',
-  }[sig.returns];
+  const r = ret(sig);
+  const f = (x: string) => (r.base === "bool" ? `(${x} ? "true" : "false")` : x);
+  const out =
+    r.depth === 0
+      ? `echo ${f("$result")}, "\\n";`
+      : r.depth === 1
+        ? `echo implode(" ", array_map(fn($v) => ${f("$v")}, $result)), "\\n";`
+        : `echo implode("\\n", array_map(fn($row) => implode(" ", array_map(fn($v) => ${f("$v")}, $row)), $result)), "\\n";`;
+  const def = r.depth ? "[]" : { int: "0", long: "0", bool: "false", string: '""' }[r.base];
   return `<?php
 
-function solve(${sig.params.map((p) => `${t[p.type]} $${p.name}`).join(", ")}): ${t[sig.returns]} {
+function solve(${sig.params.map((p) => `${T(ty(p.type))} $${p.name}`).join(", ")}): ${T(r)} {
     // ${doc}
 ${body ? ind(body, 4) : `    return ${def};`}
 }
@@ -727,7 +1179,7 @@ function line(array $lines, int $i): string {
 function readWords(string $s): array {
     return preg_split('/\\s+/', trim($s), -1, PREG_SPLIT_NO_EMPTY);
 }
-
+${helpers.length ? `\n${helpers.join("\n\n")}\n` : ""}
 $lines = explode("\\n", stream_get_contents(STDIN));
 ${read.join("\n")}
 $result = solve(${sig.params.map((p) => `$${p.name}`).join(", ")});
@@ -737,35 +1189,54 @@ ${out}
 
 // ------------------------------------------------------------------- Scala
 const scala: Gen = (sig, doc, body) => {
-  const t = { int: "Int", "int[]": "Array[Int]", string: "String", "string[]": "Array[String]", bool: "Boolean" } as const;
-  const def = { int: "0", bool: "false", "int[]": "Array.empty[Int]", string: '""' }[sig.returns];
+  const B = { int: "Int", long: "Long", bool: "Boolean", string: "String" } as const;
+  const T = (t: T): string => (t.depth ? `Array[${T({ ...t, depth: t.depth - 1 })}]` : B[t.base]);
+  const sc = (b: BaseType, x: string) => ({ int: `${x}.toInt`, long: `${x}.toLong`, bool: `(${x} == "true")`, string: x })[b];
+  const { all, nested } = needs(sig);
+  const helpers: string[] = [];
+  for (const b of all) helpers.push(`  def readAll${cap(b)}(tk: Tok): Array[${B[b]}] = Array.fill(tk.left)(${sc(b, "tk.next()")})`);
+  for (const [b, d] of nested)
+    for (let k = 1; k <= d; k++)
+      helpers.push(`  def read${cap(b)}${k}(tk: Tok): ${T({ base: b, depth: k })} = {
+    val n = tk.next().toInt
+    Array.fill(n)(${k === 1 ? sc(b, "tk.next()") : `read${cap(b)}${k - 1}(tk)`})
+  }`);
   const read = sig.params.map((p, i) => {
+    const t = ty(p.type);
+    const l = `line(${i})`;
     const v =
-      p.type === "int"
-        ? `line(${i}).trim.toInt`
-        : p.type === "int[]"
-          ? `readWords(line(${i})).map(_.toInt)`
-          : p.type === "string"
-            ? `line(${i})`
-            : `readWords(line(${i}))`;
+      t.depth === 0
+        ? t.base === "string"
+          ? l
+          : sc(t.base, `${l}.trim`)
+        : t.depth === 1
+          ? `readAll${cap(t.base)}(new Tok(${l}))`
+          : `read${cap(t.base)}${t.depth}(new Tok(${l}))`;
     return `    val ${p.name} = ${v}`;
   });
-  const out = {
-    int: "    println(result)",
-    bool: "    println(result)",
-    "int[]": '    println(result.mkString(" "))',
-    string: "    println(result)",
-  }[sig.returns];
+  const r = ret(sig);
+  const out =
+    r.depth === 0
+      ? "    println(result)"
+      : r.depth === 1
+        ? '    println(result.mkString(" "))'
+        : '    println(result.map(_.mkString(" ")).mkString("\\n"))';
+  const def = r.depth ? `Array.empty[${T({ ...r, depth: r.depth - 1 })}]` : { int: "0", long: "0L", bool: "false", string: '""' }[r.base];
   return `import scala.collection.mutable
 
+class Tok(s: String) {
+  private val t = s.trim.split("\\\\s+").filter(_.nonEmpty)
+  private var i = 0
+  def next(): String = if (i < t.length) { i += 1; t(i - 1) } else "0"
+  def left: Int = t.length - i
+}
+
 object Main {
-  def solve(${sig.params.map((p) => `${p.name}: ${t[p.type]}`).join(", ")}): ${t[sig.returns]} = {
+  def solve(${sig.params.map((p) => `${p.name}: ${T(ty(p.type))}`).join(", ")}): ${T(r)} = {
     // ${doc}
 ${body ? ind(body, 4) : `    ${def}`}
   }
-
-  def readWords(s: String): Array[String] = s.trim.split("\\\\s+").filter(_.nonEmpty)
-
+${helpers.length ? `\n${helpers.join("\n\n")}\n` : ""}
   def main(args: Array[String]): Unit = {
     val lines = scala.io.Source.stdin.getLines().toArray
     def line(i: Int): String = if (i < lines.length) lines(i).stripSuffix("\\r") else ""
@@ -779,34 +1250,54 @@ ${out}
 
 // -------------------------------------------------------------------- Dart
 const dart: Gen = (sig, doc, body) => {
-  const t = { int: "int", "int[]": "List<int>", string: "String", "string[]": "List<String>", bool: "bool" } as const;
-  const def = { int: "0", bool: "false", "int[]": "[]", string: "''" }[sig.returns];
+  const B = { int: "int", long: "int", bool: "bool", string: "String" } as const;
+  const T = (t: T): string => (t.depth ? `List<${T({ ...t, depth: t.depth - 1 })}>` : B[t.base]);
+  const sc = (b: BaseType, x: string) => ({ int: `int.parse(${x})`, long: `int.parse(${x})`, bool: `(${x} == 'true')`, string: x })[b];
+  const { all, nested } = needs(sig);
+  const helpers: string[] = [];
+  for (const b of all) helpers.push(`List<${B[b]}> readAll${cap(b)}(Tok tk) => List.generate(tk.left, (_) => ${sc(b, "tk.next()")});`);
+  for (const [b, d] of nested)
+    for (let k = 1; k <= d; k++)
+      helpers.push(`${T({ base: b, depth: k })} read${cap(b)}${k}(Tok tk) {
+  final n = int.parse(tk.next());
+  return List.generate(n, (_) => ${k === 1 ? sc(b, "tk.next()") : `read${cap(b)}${k - 1}(tk)`});
+}`);
   const read = sig.params.map((p, i) => {
+    const t = ty(p.type);
+    const l = `line(${i})`;
     const v =
-      p.type === "int"
-        ? `int.parse(line(${i}).trim())`
-        : p.type === "int[]"
-          ? `readWords(line(${i})).map(int.parse).toList()`
-          : p.type === "string"
-            ? `line(${i})`
-            : `readWords(line(${i}))`;
-    return `  final ${p.name} = ${v};`;
+      t.depth === 0
+        ? t.base === "string"
+          ? l
+          : sc(t.base, `${l}.trim()`)
+        : t.depth === 1
+          ? `readAll${cap(t.base)}(Tok(${l}))`
+          : `read${cap(t.base)}${t.depth}(Tok(${l}))`;
+    return `  final ${T(t)} ${p.name} = ${v};`;
   });
-  const out = {
-    int: "  print(result);",
-    bool: "  print(result);",
-    "int[]": "  print(result.join(' '));",
-    string: "  print(result);",
-  }[sig.returns];
+  const r = ret(sig);
+  const out =
+    r.depth === 0
+      ? "  print(result);"
+      : r.depth === 1
+        ? "  print(result.join(' '));"
+        : "  print(result.map((row) => row.join(' ')).join('\\n'));";
+  const def = r.depth ? `<${T({ ...r, depth: r.depth - 1 })}>[]` : { int: "0", long: "0", bool: "false", string: "''" }[r.base];
   return `import 'dart:io';
 
-${t[sig.returns]} solve(${sig.params.map((p) => `${t[p.type]} ${p.name}`).join(", ")}) {
+${T(r)} solve(${sig.params.map((p) => `${T(ty(p.type))} ${p.name}`).join(", ")}) {
   // ${doc}
 ${body ? ind(body, 2) : `  return ${def};`}
 }
 
-List<String> readWords(String s) => s.trim().split(RegExp(r'\\s+')).where((w) => w.isNotEmpty).toList();
-
+class Tok {
+  final List<String> t;
+  int i = 0;
+  Tok(String s) : t = s.trim().split(RegExp(r'\\s+')).where((w) => w.isNotEmpty).toList();
+  String next() => i < t.length ? t[i++] : '0';
+  int get left => t.length - i;
+}
+${helpers.length ? `\n${helpers.join("\n\n")}\n` : ""}
 void main() {
   final lines = <String>[];
   while (true) {
@@ -824,16 +1315,12 @@ ${out}
 
 // -------------------------------------------------------------------- Bash
 const bash: Gen = (sig, doc, body) => {
-  const def = { int: "echo 0", bool: "echo false", "int[]": 'echo ""', string: 'echo ""' }[sig.returns];
-  const locals = sig.params.map((p, i) =>
-    p.type === "int[]" || p.type === "string[]" ? `  local ${p.name}=(\${${i + 1}})` : `  local ${p.name}="\${${i + 1}}"`,
-  );
-  const desc = sig.params
-    .map((p, i) => `$${i + 1} = ${p.name}${p.type === "int[]" || p.type === "string[]" ? " (space-separated)" : ""}`)
-    .join(", ");
-  const outDesc = { int: "an integer", bool: "true or false", "int[]": "space-separated integers", string: "the string" }[
-    sig.returns
-  ];
+  const r = ret(sig);
+  const def = r.depth ? 'echo ""' : { int: "echo 0", long: "echo 0", bool: "echo false", string: 'echo ""' }[r.base];
+  const locals = sig.params.map((p, i) => (ty(p.type).depth ? `  local ${p.name}=(\${${i + 1}})` : `  local ${p.name}="\${${i + 1}}"`));
+  const desc = sig.params.map((p, i) => `$${i + 1} = ${p.name}${ty(p.type).depth ? " (space-separated)" : ""}`).join(", ");
+  const outDesc =
+    r.depth === 1 ? "the values, space-separated" : { int: "an integer", long: "an integer", bool: "true or false", string: "the string" }[r.base];
   return `#!/usr/bin/env bash
 
 # ${doc}
@@ -873,8 +1360,11 @@ export function generateStarter(lang: LanguageId, sig: Signature, doc: string, b
   return GENERATORS[lang](sig, doc.replace(/\n/g, " "), body);
 }
 
+/** Starters for every language (or the given ones) that can express this signature. */
 export function generateStarters(sig: Signature, doc: string, langs?: LanguageId[]): Partial<Record<LanguageId, string>> {
   const out: Partial<Record<LanguageId, string>> = {};
-  for (const l of langs ?? (Object.keys(GENERATORS) as LanguageId[])) out[l] = generateStarter(l, sig, doc);
+  for (const l of langs ?? (Object.keys(GENERATORS) as LanguageId[])) {
+    if (supportsSignature(l, sig)) out[l] = generateStarter(l, sig, doc);
+  }
   return out;
 }

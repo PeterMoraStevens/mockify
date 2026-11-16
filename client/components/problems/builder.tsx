@@ -42,14 +42,16 @@ import {
 } from "@/lib/problems/builder";
 import type { Problem } from "@/lib/problems/schema";
 import {
-  PARAM_TYPES,
-  RETURN_TYPES,
-  TYPE_LABELS,
+  BASE_TYPES,
+  MAX_PARAM_DEPTH,
+  MAX_RETURN_DEPTH,
   generateStarter,
   ioSection,
+  makeType,
+  parseType,
+  typeLabel,
   validateSignature,
-  type ParamType,
-  type ReturnType,
+  type BaseType,
   type Signature,
 } from "@/lib/problems/starters";
 import { cn } from "@/lib/utils";
@@ -59,12 +61,58 @@ import { ResultPanel, type Result } from "./upload-form";
 type SaveState = "idle" | "saving" | "saved" | "error";
 const DRAFT_DEBOUNCE_MS = 1500;
 
-const PLACEHOLDER: Record<ParamType, string> = {
-  int: "42",
-  "int[]": "3 1 4 1 5",
-  string: "hello world",
-  "string[]": "apple banana cherry",
+const BASE_PLACEHOLDER: Record<BaseType, [string, string, string]> = {
+  int: ["42", "3 1 4 1 5", "[[1,2],[3]]"],
+  long: ["9000000000", "1 20000000000 3", "[[1,2],[3]]"],
+  bool: ["true", "true false true", "[[true],[false,true]]"],
+  string: ["hello world", "apple banana cherry", '[["ab","cd"],["ef"]]'],
 };
+const placeholder = (type: string) => {
+  const t = parseType(type) ?? { base: "int" as BaseType, depth: 0 };
+  return BASE_PLACEHOLDER[t.base][Math.min(t.depth, 2)];
+};
+
+/** Base type + "array of" depth, e.g. string + 2 = string[][]. */
+function TypePicker({ value, onChange, maxDepth }: { value: string; onChange: (t: string) => void; maxDepth: number }) {
+  const t = parseType(value) ?? { base: "int" as BaseType, depth: 0 };
+  return (
+    <div className="flex shrink-0 gap-1.5">
+      <Select value={String(t.depth)} onValueChange={(d) => onChange(makeType(t.base, Number(d)))}>
+        <SelectTrigger className="w-36" aria-label="Array depth">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {Array.from({ length: maxDepth + 1 }, (_, d) => (
+            <SelectItem key={d} value={String(d)}>
+              {d === 0 ? "single value" : d === 1 ? "array of" : `${"array of ".repeat(d).trim()}`}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select value={t.base} onValueChange={(b) => onChange(makeType(b as BaseType, t.depth))}>
+        <SelectTrigger className="w-32" aria-label="Element type">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {BASE_TYPES.map((b) => (
+            <SelectItem key={b} value={b}>
+              {b === "int" ? "int" : b === "long" ? "long (64-bit)" : b === "bool" ? "bool" : "string"}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+/** toProblem, but a bad test value leaves that input empty instead of throwing (problemsWith reports it). */
+function safeProblem(s: BuilderState) {
+  try {
+    return toProblem(s);
+  } catch {
+    return toProblem({ ...s, examples: [], tests: [] });
+  }
+}
 
 export function ProblemBuilder() {
   const router = useRouter();
@@ -181,12 +229,17 @@ export function ProblemBuilder() {
   const fillOutputs = async () => {
     const all = [...s.examples, ...s.tests];
     if (!all.length) return;
+    try {
+      all.forEach((c) => toInput(c, s.signature));
+    } catch (e) {
+      return void toast.error((e as Error).message);
+    }
     setBusy("outputs");
     try {
       const r = await fetch("/api/problems/outputs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ language: s.referenceLanguage, code: s.referenceCode, inputs: all.map(toInput) }),
+        body: JSON.stringify({ language: s.referenceLanguage, code: s.referenceCode, inputs: all.map((c) => toInput(c, s.signature)) }),
       });
       const b = await r.json().catch(() => ({}));
       if (!r.ok) return void toast.error(b.error ?? "Couldn't run the reference");
@@ -216,7 +269,7 @@ export function ProblemBuilder() {
       const res = await fetch("/api/problems", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ problem: toProblem(s), dryRun }),
+        body: JSON.stringify({ problem: safeProblem(s), dryRun }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -241,7 +294,7 @@ export function ProblemBuilder() {
 
   const issues = problemsWith(s);
   const [jsonOpen, setJsonOpen] = useState(false);
-  const problemJson = useMemo(() => (jsonOpen ? JSON.stringify(toProblem(s), null, 2) : ""), [jsonOpen, s]);
+  const problemJson = useMemo(() => (jsonOpen ? JSON.stringify(safeProblem(s), null, 2) : ""), [jsonOpen, s]);
   const starterPreview = useMemo(
     () => (sigError ? "" : generateStarter(starterLang, s.signature, s.doc || "Return the answer.")),
     [starterLang, s.signature, s.doc, sigError],
@@ -367,23 +420,11 @@ export function ProblemBuilder() {
                   placeholder="nums"
                   maxLength={30}
                 />
-                <Select
+                <TypePicker
                   value={p.type}
-                  onValueChange={(v) =>
-                    setSignature({ ...s.signature, params: s.signature.params.map((q, j) => (j === i ? { ...q, type: v as ParamType } : q)) })
-                  }
-                >
-                  <SelectTrigger className="w-52 shrink-0">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PARAM_TYPES.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {TYPE_LABELS[t]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  maxDepth={MAX_PARAM_DEPTH}
+                  onChange={(v) => setSignature({ ...s.signature, params: s.signature.params.map((q, j) => (j === i ? { ...q, type: v } : q)) })}
+                />
                 <Button
                   size="icon"
                   variant="neutral"
@@ -404,20 +445,10 @@ export function ProblemBuilder() {
               <Plus /> Add parameter
             </Button>
           </div>
-          <div className="mt-5 grid gap-4 sm:grid-cols-[220px_1fr]">
+          <div className="mt-5 grid gap-4 sm:grid-cols-[300px_1fr]">
             <Field label="Returns">
-              <Select value={s.signature.returns} onValueChange={(v) => setSignature({ ...s.signature, returns: v as ReturnType })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {RETURN_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {TYPE_LABELS[t]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <TypePicker value={s.signature.returns} maxDepth={MAX_RETURN_DEPTH} onChange={(v) => setSignature({ ...s.signature, returns: v })} />
+              <p className="mt-1 text-xs text-muted">{typeLabel(s.signature.returns)}</p>
             </Field>
             <Field label="What solve() returns" hint="One sentence, shown as a comment in the starter code.">
               <Input
@@ -709,12 +740,12 @@ function CaseList({
             {signature.params.map((p, j) => (
               <div key={j}>
                 <label className="mb-1 block font-mono text-[11px] text-muted">
-                  {p.name || `line ${j + 1}`} <span className="opacity-60">({p.type})</span>
+                  {p.name || `line ${j + 1}`} <span className="opacity-60">({p.type}{(parseType(p.type)?.depth ?? 0) >= 2 ? ", as JSON" : ""})</span>
                 </label>
                 <Input
                   value={c.values[j] ?? ""}
                   onChange={(e) => onChange(list, i, { values: c.values.map((v, k) => (k === j ? e.target.value : v)) })}
-                  placeholder={PLACEHOLDER[p.type]}
+                  placeholder={placeholder(p.type)}
                   className="h-9 font-mono text-xs"
                   spellCheck={false}
                 />
@@ -724,13 +755,24 @@ function CaseList({
               <label className="mb-1 block font-mono text-[11px] text-muted">
                 expected output <span className="opacity-60">({signature.returns})</span>
               </label>
-              <Input
-                value={c.output}
-                onChange={(e) => onChange(list, i, { output: e.target.value })}
-                placeholder="Filled by the reference"
-                className={cn("h-9 font-mono text-xs", !c.output.trim() && "border-dashed")}
-                spellCheck={false}
-              />
+              {(parseType(signature.returns)?.depth ?? 0) >= 2 ? (
+                <Textarea
+                  value={c.output}
+                  onChange={(e) => onChange(list, i, { output: e.target.value })}
+                  placeholder="Filled by the reference"
+                  className={cn("min-h-9 font-mono text-xs", !c.output.trim() && "border-dashed")}
+                  rows={Math.min(6, Math.max(2, c.output.split("\n").length))}
+                  spellCheck={false}
+                />
+              ) : (
+                <Input
+                  value={c.output}
+                  onChange={(e) => onChange(list, i, { output: e.target.value })}
+                  placeholder="Filled by the reference"
+                  className={cn("h-9 font-mono text-xs", !c.output.trim() && "border-dashed")}
+                  spellCheck={false}
+                />
+              )}
             </div>
             {explanations && (
               <div className="sm:col-span-2">

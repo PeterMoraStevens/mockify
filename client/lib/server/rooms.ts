@@ -2,7 +2,7 @@ import "server-only";
 import * as Y from "yjs";
 import { isLanguageId } from "@/lib/languages";
 import { newRoomId } from "@/lib/room-id";
-import { MAX_OPEN_ROOMS, ROOM_DEFAULT_MS, ROOM_MAX_MS, type RoomSummary } from "@/lib/rooms";
+import { MAX_OPEN_ROOMS, ROOM_DEFAULT_MS, ROOM_MAX_MS, isRoomMode, type RoomMode, type RoomSummary } from "@/lib/rooms";
 import { db, tx } from "./db";
 
 export type RoomRow = {
@@ -18,6 +18,7 @@ export type RoomRow = {
   whiteboard: string | null;
   ydoc: Uint8Array | null;
   updated_at: number | null;
+  mode: string;
 };
 
 /** Saved docs can't grow without bound (whiteboard freehand strokes get big). */
@@ -39,14 +40,17 @@ export function openRoomCount(userId: string): number {
 }
 
 /** Creates a room. Matchmaking passes both people so nobody else can take a seat. */
-export function createRoom(userId: string, opts: { members?: string[]; skipLimit?: boolean } = {}): string | "limit" {
+export function createRoom(
+  userId: string,
+  opts: { members?: string[]; skipLimit?: boolean; mode?: RoomMode } = {},
+): string | "limit" {
   return tx(() => {
     if (!opts.skipLimit && openRoomCount(userId) >= MAX_OPEN_ROOMS) return "limit";
     const id = newRoomId();
     const now = Date.now();
     db()
-      .prepare("INSERT INTO rooms (id, created_by, created_at, expires_at) VALUES (?, ?, ?, ?)")
-      .run(id, userId, now, now + ROOM_DEFAULT_MS);
+      .prepare("INSERT INTO rooms (id, created_by, created_at, expires_at, mode) VALUES (?, ?, ?, ?, ?)")
+      .run(id, userId, now, now + ROOM_DEFAULT_MS, opts.mode ?? "coding");
     const add = db().prepare("INSERT OR IGNORE INTO room_attendance (room_id, user_id, seen_at, joined_at) VALUES (?, ?, ?, ?)");
     for (const m of opts.members ?? []) add.run(id, m, now, now);
     return id;
@@ -126,10 +130,11 @@ export function saveRoomDoc(roomId: string, update: Uint8Array): "ok" | "too-lar
   const session = doc.getMap<unknown>("session");
   const slug = session.get("problemSlug");
   const lang = session.get("language");
+  const mode = session.get("mode");
   const elements = [...doc.getMap<Record<string, unknown>>("wb").values()].filter((e) => !e.isDeleted);
   db()
     .prepare(
-      `UPDATE rooms SET ydoc = ?, code = ?, language = ?, problem_slug = ?, whiteboard = ?, updated_at = ?
+      `UPDATE rooms SET ydoc = ?, code = ?, language = ?, problem_slug = ?, whiteboard = ?, updated_at = ?, mode = ?
        WHERE id = ?`,
     )
     .run(
@@ -139,6 +144,7 @@ export function saveRoomDoc(roomId: string, update: Uint8Array): "ok" | "too-lar
       typeof slug === "string" ? slug.slice(0, 64) : null,
       elements.length ? JSON.stringify(elements) : null,
       Date.now(),
+      isRoomMode(mode) ? mode : room.mode,
       roomId,
     );
   doc.destroy();
@@ -172,13 +178,13 @@ export function roomsForUser(
 ): RoomSummary[] {
   const rows = db()
     .prepare(
-      `SELECT r.id, r.created_by, r.created_at, r.expires_at, r.ended_at, r.problem_slug FROM rooms r
+      `SELECT r.id, r.created_by, r.created_at, r.expires_at, r.ended_at, r.problem_slug, r.mode FROM rooms r
        WHERE r.created_by = ? OR EXISTS (SELECT 1 FROM room_attendance a WHERE a.room_id = r.id AND a.user_id = ?)
        ORDER BY r.created_at DESC LIMIT ?`,
     )
     .all(userId, userId, limit) as Pick<
     RoomRow,
-    "id" | "created_by" | "created_at" | "expires_at" | "ended_at" | "problem_slug"
+    "id" | "created_by" | "created_at" | "expires_at" | "ended_at" | "problem_slug" | "mode"
   >[];
   const members = membersOf(rows.map((r) => r.id));
   const now = Date.now();
@@ -191,6 +197,7 @@ export function roomsForUser(
     createdByMe: r.created_by === userId,
     problemSlug: r.problem_slug,
     problemTitle: r.problem_slug ? titleOf(r.problem_slug) : null,
+    mode: isRoomMode(r.mode) ? r.mode : "coding",
     participants: (members.get(r.id) ?? []).map((m) => ({ id: m.id, displayName: m.display_name, username: m.username })),
   }));
 }

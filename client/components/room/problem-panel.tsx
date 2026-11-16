@@ -16,6 +16,7 @@ import {
 import { Tabs } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { InterviewerProblem, ProblemSummary } from "@/lib/problems/schema";
+import { formatOutput, formatValue, type Signature } from "@/lib/problems/starters";
 import type { SharedNote } from "@/lib/room/session-doc";
 import { cn } from "@/lib/utils";
 import type { AnyProblem } from "./room-view";
@@ -184,8 +185,8 @@ function ProblemTab({
           <div key={i} className="overflow-hidden rounded-base border-2 border-border">
             <div className="border-b-2 border-border bg-background px-3 py-1 text-xs font-heading">Example {i + 1}</div>
             <div className="grid grid-cols-2 divide-x-2 divide-border">
-              <IO label="Input" value={ex.input} />
-              <IO label="Output" value={ex.output} />
+              <IO label="Input" value={problem.signature ? readableInput(problem.signature, ex.input) : ex.input} />
+              <IO label="Output" value={problem.signature ? formatOutput(problem.signature.returns, ex.output) : ex.output} />
             </div>
             {ex.explanation && (
               <div className="border-t-2 border-border px-3 py-2 text-xs text-muted">{ex.explanation}</div>
@@ -211,6 +212,12 @@ function ProblemTab({
       </p>
     </article>
   );
+}
+
+/** "nums = [2,7,11,15]" per parameter, from the raw stdin lines. */
+function readableInput(sig: Signature, input: string): string {
+  const lines = input.replace(/\n$/, "").split("\n");
+  return sig.params.map((p, i) => `${p.name} = ${formatValue(p.type, lines[i] ?? "")}`).join("\n");
 }
 
 function IO({ label, value }: { label: string; value: string }) {

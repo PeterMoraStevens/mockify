@@ -3,7 +3,17 @@
 
 import { LANGUAGE_IDS, type LanguageId } from "@/lib/languages";
 import type { Problem } from "./schema";
-import { buildStdin, generateStarter, generateStarters, ioSection, validateSignature, type Signature } from "./starters";
+import {
+  buildStdin,
+  editableValue,
+  encodeValue,
+  generateStarter,
+  generateStarters,
+  ioSection,
+  parseType,
+  validateSignature,
+  type Signature,
+} from "./starters";
 
 export type BuilderCase = { values: string[]; output: string; explanation: string };
 
@@ -81,7 +91,21 @@ const lines = (s: string) =>
     .map((l) => l.trim())
     .filter(Boolean);
 
-export const toInput = (c: BuilderCase) => buildStdin(c.values);
+/** The stdin for one case. Throws (with a readable message) if a value doesn't match its type. */
+export const toInput = (c: BuilderCase, sig: Signature) =>
+  buildStdin(sig.params.map((p, i) => encodeValue(p.type, c.values[i] ?? "", p.name)));
+
+/** The first value error across the cases, e.g. "grid: write nested arrays as JSON". */
+export function caseError(cases: BuilderCase[], sig: Signature, label: (i: number) => string): string | null {
+  for (const [i, c] of cases.entries()) {
+    try {
+      toInput(c, sig);
+    } catch (e) {
+      return `${label(i)}, ${(e as Error).message}`;
+    }
+  }
+  return null;
+}
 const withNewline = (s: string) => (s.endsWith("\n") ? s : `${s}\n`);
 
 /** Problems in the client-side checks the author should fix before publishing. */
@@ -96,7 +120,14 @@ export function problemsWith(s: BuilderState): string[] {
   const all = [...s.examples, ...s.tests];
   if (all.some((c) => c.output.trim() === "" && c.values.every((v) => v === ""))) out.push("Remove empty test cases.");
   // An empty string is a legitimate answer for string-returning problems.
-  if (s.signature.returns !== "string" && all.some((c) => c.output.trim() === "")) {
+  if (!sigErr) {
+    const err =
+      caseError(s.examples, s.signature, (i) => `Example ${i + 1}`) ?? caseError(s.tests, s.signature, (i) => `Hidden test ${i + 1}`);
+    if (err) out.push(err);
+  }
+  // An empty string or an empty array is a legitimate answer.
+  const ret = parseType(s.signature.returns);
+  if (ret && ret.depth === 0 && ret.base !== "string" && all.some((c) => c.output.trim() === "")) {
     out.push("Some tests have no expected output. Use “Fill outputs from reference”.");
   }
   if (!s.languages.length) out.push("Pick at least one language for starter code.");
@@ -110,7 +141,7 @@ export function toProblem(s: BuilderState): Problem {
     .filter(Boolean)
     .join("\n\n");
   const tc = (c: BuilderCase, withExplanation: boolean) => ({
-    input: toInput(c),
+    input: toInput(c, s.signature),
     output: withNewline(c.output),
     ...(withExplanation && c.explanation.trim() ? { explanation: c.explanation.trim() } : {}),
   });
@@ -151,7 +182,10 @@ export function fromProblem(p: Problem): BuilderState | null {
   const doc = p.starters.python?.match(/# (.+)\n/)?.[1] ?? "Return the answer.";
   const toCase = (t: { input: string; output: string; explanation?: string }): BuilderCase => {
     const parts = t.input.replace(/\n$/, "").split("\n");
-    return { values: Array.from({ length: n }, (_, i) => parts[i] ?? ""), output: t.output.replace(/\n$/, ""), explanation: t.explanation ?? "" };
+    return {
+      values: Array.from({ length: n }, (_, i) => editableValue(sig.params[i].type, parts[i] ?? "")),       output: t.output.replace(/\n$/, ""),
+      explanation: t.explanation ?? "",
+    };
   };
   return {
     title: p.title,

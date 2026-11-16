@@ -29,6 +29,11 @@ export const REVIEW_CRITERIA: Record<ReviewRole, { key: string; label: string; h
   ],
 };
 
+/** Coding rooms get the editor and tests; system design rooms are whiteboard-only. Switchable in the room. */
+export const ROOM_MODES = ["coding", "design"] as const;
+export type RoomMode = (typeof ROOM_MODES)[number];
+export const isRoomMode = (m: unknown): m is RoomMode => m === "coding" || m === "design";
+
 export type RoomSummary = {
   id: string;
   createdAt: number;
@@ -38,5 +43,6 @@ export type RoomSummary = {
   createdByMe: boolean;
   problemSlug: string | null;
   problemTitle: string | null;
+  mode: RoomMode;
   participants: { id: string; displayName: string; username: string }[];
 };
