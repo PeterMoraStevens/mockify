@@ -4,6 +4,8 @@ import * as Y from "yjs";
 import { Awareness } from "y-protocols/awareness";
 import type { LanguageId } from "@/lib/languages";
 import type { RunMode, RunResponse } from "@/lib/run-types";
+import { defaultFoldRanges } from "./default-folds";
+import { foldEntry, getFolds } from "./shared-folds";
 
 /**
  * Everything the two people share lives in one Y.Doc that syncs directly
@@ -15,6 +17,7 @@ import type { RunMode, RunResponse } from "@/lib/run-types";
  *   run       Y.Map    latest test run and latest custom run (kept separately) + who is running
  *   wb        Y.Map    whiteboard elements keyed by element id
  *   notes     Y.Map    notes people chose to share, keyed by user id
+ *   folds     Y.Map    folded editor sections (see shared-folds.ts)
  *
  * Both browsers also save the doc to the server every so often, so a room can
  * be rejoined later and the interview summary has the code and whiteboard.
@@ -120,12 +123,18 @@ export const roleOf = (slot: Slot, interviewerSlot: Slot): Role =>
 
 export const otherSlot = (s: Slot): Slot => (s === "a" ? "b" : "a");
 
-/** Replace the editor contents in one transaction (problem pick, language switch, reset). */
+/**
+ * Replace the editor contents in one transaction (problem pick, language
+ * switch, reset). Everything outside solve() starts folded, for both people.
+ */
 export function replaceCode(doc: Y.Doc, text: string, origin?: unknown) {
   const code = getCode(doc);
+  const folds = getFolds(doc);
   doc.transact(() => {
     code.delete(0, code.length);
     code.insert(0, text);
+    folds.clear();
+    defaultFoldRanges(text).forEach((r, i) => folds.set(`default-${i}-${crypto.randomUUID()}`, foldEntry(code, r)));
   }, origin);
 }
 

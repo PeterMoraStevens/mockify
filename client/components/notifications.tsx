@@ -10,12 +10,14 @@ import type { FriendLists, Invite, Person } from "@/lib/social-types";
 import { cn } from "@/lib/utils";
 
 /**
- * Room invites and friend requests, polled while the tab is visible (and
- * right away when it comes back into focus). One poller per page, shared by
- * the bell, the Rooms badge and the friends page through a small store.
+ * Room invites and friend requests. The server pushes a ping over an SSE
+ * stream (/api/notifications/stream) the moment something changes, and we
+ * refetch; a slow poll while the tab is visible (and on refocus) covers
+ * dropped streams. One watcher per page, shared by the bell, the Rooms badge
+ * and the friends page through a small store.
  */
 
-const POLL_MS = 8_000;
+const POLL_MS = 30_000;
 type State = { invites: Invite[]; friends: FriendLists | null };
 let state: State = { invites: [], friends: null };
 const listeners = new Set<() => void>();
@@ -30,9 +32,16 @@ function emit(next: State) {
   for (const l of listeners) l();
 }
 
+let again = false;
+
 async function poll(force = false): Promise<void> {
   if (!force && document.visibilityState !== "visible") return;
-  if (inflight) return inflight;
+  if (inflight) {
+    // A forced refresh (a push, or after an action) may describe a change the
+    // in-flight request started too early to see, so fetch once more after it.
+    if (force) again = true;
+    return inflight;
+  }
   inflight = (async () => {
     const r = await fetch("/api/notifications", { cache: "no-store" }).catch(() => null);
     if (!r?.ok) return;
@@ -56,6 +65,10 @@ async function poll(force = false): Promise<void> {
     emit(next);
   })().finally(() => {
     inflight = null;
+    if (again) {
+      again = false;
+      void poll(true);
+    }
   });
   return inflight;
 }
@@ -82,12 +95,21 @@ export function NotificationWatcher() {
     if (watchers++ > 0) return () => void watchers--;
     poll(true);
     const iv = window.setInterval(() => poll(), POLL_MS);
+    // Push: refetch as soon as the server says something changed. EventSource
+    // reconnects by itself; catch up on whatever we missed when it does.
+    let es: EventSource | null = null;
+    if (typeof EventSource !== "undefined") {
+      es = new EventSource("/api/notifications/stream");
+      es.onmessage = () => void poll(true);
+      es.onopen = () => void poll(true);
+    }
     const onVisible = () => document.visibilityState === "visible" && poll();
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", onVisible);
     return () => {
       watchers--;
       window.clearInterval(iv);
+      es?.close();
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onVisible);
     };

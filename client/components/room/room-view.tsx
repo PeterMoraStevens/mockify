@@ -17,7 +17,7 @@ import type { InterviewerProblem, ProblemSummary, PublicProblem } from "@/lib/pr
 import type { EditorView } from "@codemirror/view";
 import { RoomConnection, type ConnSnapshot } from "@/lib/room/connection";
 import { useMediaQuery, useNow, useRemotePresence, useY } from "@/lib/room/hooks";
-import { blackVideoTrack, isSynthetic, saveMediaToggles, stopStream } from "@/lib/room/media";
+import { blackVideoTrack, openCamera, openMic, saveMediaToggles, silentAudioTrack, stopStream } from "@/lib/room/media";
 import {
   SLOT_COLORS,
   applyEncoded,
@@ -161,47 +161,59 @@ export function RoomView({
     awareness.setLocalState(presence);
   }, [awareness, slot, user, micOn, camOn, sharing]);
 
-  const toggleMic = () => {
-    const t = joined.stream.getAudioTracks()[0];
-    if (!t || isSynthetic(t)) {
-      toast.error("No microphone available");
-      return;
-    }
-    t.enabled = !micOn;
-    setMicOn(!micOn);
-    saveMediaToggles({ micOn: !micOn, camOn });
-  };
-
   const cameraTrack = useCallback(async (): Promise<MediaStreamTrack | null> => {
     try {
-      const s = await navigator.mediaDevices.getUserMedia({
-        video: {
-          deviceId: joined.prefs.videoId ? { exact: joined.prefs.videoId } : undefined,
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-      });
-      return s.getVideoTracks()[0];
+      return await openCamera(joined.prefs);
     } catch {
       return null;
     }
-  }, [joined.prefs.videoId]);
+  }, [joined.prefs]);
 
-  const swapVideo = useCallback(
+  /** Swap the outgoing audio or video track (no renegotiation) and stop the one it replaces. */
+  const swapTrack = useCallback(
     async (track: MediaStreamTrack) => {
+      const kind = track.kind as "audio" | "video";
       const old = conn
-        ? await conn.replaceTrack("video", track)
+        ? await conn.replaceTrack(kind, track)
         : (() => {
-            const o = joined.stream.getVideoTracks()[0];
+            const o = joined.stream.getTracks().find((t) => t.kind === kind);
             if (o) joined.stream.removeTrack(o);
             joined.stream.addTrack(track);
             return o;
           })();
-      if (old && old !== screenTrack.current) old.stop();
-      setLocalVideo(track);
+      if (old && old !== track && old !== screenTrack.current) old.stop();
+      if (kind === "video") setLocalVideo(track);
     },
     [conn, joined.stream],
   );
+  const swapVideo = swapTrack;
+
+  // Muting releases the microphone entirely (the OS indicator goes out); unmuting opens it again.
+  const micBusy = useRef(false);
+  const toggleMic = async () => {
+    if (micBusy.current) return;
+    micBusy.current = true;
+    try {
+      if (micOn) {
+        setMicOn(false);
+        saveMediaToggles({ micOn: false, camOn });
+        await swapTrack(silentAudioTrack());
+        return;
+      }
+      let t: MediaStreamTrack;
+      try {
+        t = await openMic(joined.prefs);
+      } catch {
+        toast.error("Couldn't start the microphone");
+        return;
+      }
+      await swapTrack(t);
+      setMicOn(true);
+      saveMediaToggles({ micOn: true, camOn });
+    } finally {
+      micBusy.current = false;
+    }
+  };
 
   const toggleCam = async () => {
     saveMediaToggles({ micOn, camOn: !camOn });

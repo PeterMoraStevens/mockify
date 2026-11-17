@@ -6,16 +6,23 @@ import { rateLimit, requireUser } from "@/lib/server/auth";
 import { db } from "@/lib/server/db";
 import { gradeAgainst } from "@/lib/server/grade";
 import { RunnerError } from "@/lib/server/piston";
+import { checkVerifyToken, issueVerifyToken } from "@/lib/server/verify-token";
 
 export async function GET() {
   return NextResponse.json({ problems: listProblems() });
 }
 
 /**
- * Upload a problem. It must match the schema AND its reference solution must
- * pass every visible and hidden test on Piston before it's published.
- * Send `{ dryRun: true, problem }` to validate without saving. Re-publishing a
- * slug you own replaces it.
+ * Upload a problem in two steps, so nothing is published unverified:
+ *
+ *   1. `{ dryRun: true, problem }` checks the schema and runs the reference
+ *      solution against every visible and hidden test on Piston. If every
+ *      expected output matches, the response carries a `verifyToken`.
+ *   2. `{ problem, verifyToken }` publishes. The token only works for the
+ *      exact problem that was verified (any edit means verifying again), for
+ *      the same user, within an hour.
+ *
+ * Re-publishing a slug you own replaces it.
  */
 export async function POST(req: Request) {
   const auth = await requireUser();
@@ -27,7 +34,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Too many uploads. Try again later." }, { status: 429 });
   }
 
-  const raw = (await req.json().catch(() => null)) as { problem?: unknown; dryRun?: unknown } | null;
+  const raw = (await req.json().catch(() => null)) as { problem?: unknown; dryRun?: unknown; verifyToken?: unknown } | null;
   const parsed = problemSchema.safeParse(raw?.problem);
   if (!parsed.success) {
     return NextResponse.json(
@@ -50,6 +57,23 @@ export async function POST(req: Request) {
   const mine = owner?.owner_id === auth.id && isUploaded(problem.slug);
   if (!dryRun && getProblem(problem.slug) && !mine) {
     return NextResponse.json({ error: `A problem with slug "${problem.slug}" already exists.` }, { status: 409 });
+  }
+
+  if (!dryRun) {
+    if (!checkVerifyToken(auth.id, problem, raw?.verifyToken)) {
+      return NextResponse.json(
+        {
+          error: "Verify the problem before publishing: run the check against all tests, then publish without changing anything.",
+          needsVerification: true,
+        },
+        { status: 428 },
+      );
+    }
+    saveUploadedProblem(problem);
+    db()
+      .prepare("INSERT INTO problem_owners (slug, owner_id, created_at) VALUES (?, ?, ?) ON CONFLICT (slug) DO NOTHING")
+      .run(problem.slug, auth.id, Date.now());
+    return NextResponse.json({ ok: true, published: true, slug: problem.slug });
   }
 
   let verification;
@@ -82,11 +106,11 @@ export async function POST(req: Request) {
     );
   }
 
-  if (!dryRun) {
-    saveUploadedProblem(problem);
-    db()
-      .prepare("INSERT INTO problem_owners (slug, owner_id, created_at) VALUES (?, ?, ?) ON CONFLICT (slug) DO NOTHING")
-      .run(problem.slug, auth.id, Date.now());
-  }
-  return NextResponse.json({ ok: true, published: !dryRun, slug: problem.slug, verification });
+  return NextResponse.json({
+    ok: true,
+    published: false,
+    slug: problem.slug,
+    verification,
+    verifyToken: issueVerifyToken(auth.id, problem),
+  });
 }

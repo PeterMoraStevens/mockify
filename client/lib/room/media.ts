@@ -3,8 +3,10 @@
 /**
  * The outgoing stream always has exactly one audio and one video track, even
  * without a camera or mic (we synthesize silent/black ones). That way mute,
- * camera toggle and screen share are all `replaceTrack` / `enabled` flips with
- * no WebRTC renegotiation.
+ * camera toggle and screen share are all `replaceTrack` swaps with no WebRTC
+ * renegotiation. Turning the mic or camera off stops the real track (so the
+ * device is released and the OS indicator goes out) and swaps in a synthetic
+ * one; turning it back on opens the device again.
  */
 
 export type DevicePrefs = { audioId?: string; videoId?: string };
@@ -90,42 +92,70 @@ function describe(e: unknown): string {
   return (e as Error)?.message ?? "Unavailable";
 }
 
-/** Grab camera + mic separately so one failing doesn't take the other down. */
-export async function acquireMedia(prefs: DevicePrefs): Promise<AcquireResult> {
+/** Opens the microphone. Throws a DOMException if it can't (see describeMediaError). */
+export async function openMic(prefs: DevicePrefs): Promise<MediaStreamTrack> {
+  const s = await navigator.mediaDevices.getUserMedia({
+    audio: {
+      deviceId: prefs.audioId ? { exact: prefs.audioId } : undefined,
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    },
+  });
+  return s.getAudioTracks()[0];
+}
+
+/** Opens the camera. Throws a DOMException if it can't (see describeMediaError). */
+export async function openCamera(prefs: DevicePrefs): Promise<MediaStreamTrack> {
+  const s = await navigator.mediaDevices.getUserMedia({
+    video: {
+      deviceId: prefs.videoId ? { exact: prefs.videoId } : undefined,
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+      frameRate: { ideal: 30 },
+    },
+  });
+  return s.getVideoTracks()[0];
+}
+
+export const describeMediaError = describe;
+
+/**
+ * Grab camera + mic separately so one failing doesn't take the other down.
+ * A device that's toggled off isn't opened at all; it gets a synthetic track.
+ */
+export async function acquireMedia(
+  prefs: DevicePrefs,
+  want: { audio: boolean; video: boolean } = { audio: true, video: true },
+): Promise<AcquireResult> {
   const stream = new MediaStream();
   let audioError: string | null = null;
   let videoError: string | null = null;
 
   const [a, v] = await Promise.allSettled([
-    navigator.mediaDevices.getUserMedia({
-      audio: {
-        deviceId: prefs.audioId ? { exact: prefs.audioId } : undefined,
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      },
-    }),
-    navigator.mediaDevices.getUserMedia({
-      video: {
-        deviceId: prefs.videoId ? { exact: prefs.videoId } : undefined,
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        frameRate: { ideal: 30 },
-      },
-    }),
+    want.audio ? openMic(prefs) : Promise.resolve(null),
+    want.video ? openCamera(prefs) : Promise.resolve(null),
   ]);
 
-  if (a.status === "fulfilled") stream.addTrack(a.value.getAudioTracks()[0]);
+  if (a.status === "fulfilled") stream.addTrack(a.value ?? silentAudioTrack());
   else {
     audioError = describe(a.reason);
     stream.addTrack(silentAudioTrack());
   }
-  if (v.status === "fulfilled") stream.addTrack(v.value.getVideoTracks()[0]);
+  if (v.status === "fulfilled") stream.addTrack(v.value ?? blackVideoTrack());
   else {
     videoError = describe(v.reason);
     stream.addTrack(blackVideoTrack());
   }
   return { stream, audioError, videoError };
+}
+
+/** A copy of `stream` with its `track.kind` track replaced. Stops the old one. */
+export function withTrack(stream: MediaStream, track: MediaStreamTrack): MediaStream {
+  const next = new MediaStream(stream.getTracks().filter((t) => t.kind !== track.kind));
+  next.addTrack(track);
+  for (const t of stream.getTracks()) if (t.kind === track.kind && t !== track) t.stop();
+  return next;
 }
 
 export async function listDevices() {

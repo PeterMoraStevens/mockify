@@ -41,6 +41,7 @@ import {
   type BuilderState,
 } from "@/lib/problems/builder";
 import type { Problem } from "@/lib/problems/schema";
+import type { RunResponse } from "@/lib/run-types";
 import {
   BASE_TYPES,
   MAX_PARAM_DEPTH,
@@ -280,14 +281,20 @@ export function ProblemBuilder() {
       const res = await fetch("/api/problems", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ problem: safeProblem(s), dryRun }),
+        body: JSON.stringify(
+          dryRun
+            ? { problem: safeProblem(s), dryRun }
+            : { problem: safeProblem(s), verifyToken: isVerified ? verified.token : undefined },
+        ),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (dryRun || body.needsVerification) setVerified(null);
         setResult({ kind: "error", message: body.error ?? `Failed (${res.status})`, issues: body.issues, verification: body.verification });
         return;
       }
-      setResult({ kind: "ok", published: body.published, slug: body.slug, verification: body.verification });
+      if (dryRun) setVerified({ token: body.verifyToken, key: currentKey, verification: body.verification });
+      setResult({ kind: "ok", published: body.published, slug: body.slug, verification: body.verification ?? verified?.verification });
       if (body.published) {
         toast.success(editing ? "Problem updated" : "Problem published");
         if (draftId) await fetch(`/api/drafts/${draftId}`, { method: "DELETE" }).catch(() => {});
@@ -304,6 +311,11 @@ export function ProblemBuilder() {
   };
 
   const issues = problemsWith(s);
+  // Publishing needs a passing check of exactly what's on screen now (the
+  // server enforces this too). Any edit after checking means checking again.
+  const currentKey = useMemo(() => JSON.stringify(safeProblem(s)), [s]);
+  const [verified, setVerified] = useState<{ token: string; key: string; verification: RunResponse } | null>(null);
+  const isVerified = verified?.key === currentKey;
   const [jsonOpen, setJsonOpen] = useState(false);
   const problemJson = useMemo(() => (jsonOpen ? JSON.stringify(safeProblem(s), null, 2) : ""), [jsonOpen, s]);
   const starterPreview = useMemo(
@@ -388,7 +400,7 @@ export function ProblemBuilder() {
         >
           {preview ? (
             <div className="prose-brutal rounded-base border-2 border-border bg-background p-4 text-sm">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{toProblem(s).description}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{safeProblem(s).description}</ReactMarkdown>
             </div>
           ) : (
             <div className="space-y-4">
@@ -630,7 +642,7 @@ export function ProblemBuilder() {
               size="sm"
               variant="neutral"
               onClick={async () => {
-                await navigator.clipboard.writeText(JSON.stringify(toProblem(s), null, 2));
+                await navigator.clipboard.writeText(JSON.stringify(safeProblem(s), null, 2));
                 toast.success("Copied");
               }}
             >
@@ -659,9 +671,19 @@ export function ProblemBuilder() {
             <Button variant="neutral" onClick={() => submit(true)} disabled={!!busy || issues.length > 0}>
               {busy === "validate" ? <Spinner /> : <FlaskConical />} Check against all tests
             </Button>
-            <Button onClick={() => submit(false)} disabled={!!busy || issues.length > 0}>
+            <Button
+              onClick={() => submit(false)}
+              disabled={!!busy || issues.length > 0 || !isVerified}
+              title={isVerified ? undefined : "Check against all tests first"}
+            >
               {busy === "publish" ? <Spinner /> : <Rocket />} {editing ? "Publish changes" : "Publish"}
             </Button>
+            {!isVerified && issues.length === 0 && (
+              <p className="text-xs text-muted">
+                {verified ? "You changed something since the last check. " : ""}
+                Run &ldquo;Check against all tests&rdquo; to verify every expected output before publishing.
+              </p>
+            )}
             {draftId && (
               <Button variant="neutral" size="sm" onClick={discardDraft} className="mt-1">
                 <Trash2 /> Discard draft

@@ -1,6 +1,7 @@
 import "server-only";
 import crypto from "node:crypto";
 import { db, tx } from "./db";
+import { notify } from "./notify";
 import { getRoom, isOpen, isParticipant } from "./rooms";
 
 import type { FriendLists, Invite, Person } from "@/lib/social-types";
@@ -58,6 +59,7 @@ export function requestFriend(userId: string, username: string): RequestResult {
       db()
         .prepare("UPDATE friendships SET status = 'accepted' WHERE requester_id = ? AND addressee_id = ?")
         .run(target.id, userId);
+      notify(userId, target.id);
       return "accepted";
     }
     if (existing) return "already";
@@ -68,6 +70,7 @@ export function requestFriend(userId: string, username: string): RequestResult {
     db()
       .prepare("INSERT INTO friendships (requester_id, addressee_id, status, created_at) VALUES (?, ?, 'pending', ?)")
       .run(userId, target.id, Date.now());
+    notify(target.id);
     return "sent";
   });
 }
@@ -78,6 +81,7 @@ export function acceptFriend(userId: string, requesterId: string): boolean {
       "UPDATE friendships SET status = 'accepted' WHERE requester_id = ? AND addressee_id = ? AND status = 'pending'",
     )
     .run(requesterId, userId);
+  if (Number(r.changes) > 0) notify(userId, requesterId);
   return Number(r.changes) > 0;
 }
 
@@ -88,6 +92,7 @@ export function removeFriend(userId: string, otherId: string) {
       "DELETE FROM friendships WHERE (requester_id = ? AND addressee_id = ?) OR (requester_id = ? AND addressee_id = ?)",
     )
     .run(userId, otherId, otherId, userId);
+  notify(userId, otherId);
 }
 
 export type InviteResult = "ok" | "not-friends" | "room-closed" | "not-in-room" | "already-in-room";
@@ -104,6 +109,7 @@ export function inviteToRoom(fromId: string, roomId: string, toId: string): Invi
        ON CONFLICT (room_id, to_id) DO UPDATE SET from_id = excluded.from_id, created_at = excluded.created_at, dismissed = 0`,
     )
     .run(crypto.randomUUID(), roomId, fromId, toId, Date.now());
+  notify(toId);
   return "ok";
 }
 
@@ -139,4 +145,5 @@ export function pendingInvites(userId: string): Invite[] {
 
 export function dismissInvite(userId: string, inviteId: string) {
   db().prepare("UPDATE room_invites SET dismissed = 1 WHERE id = ? AND to_id = ?").run(inviteId, userId);
+  notify(userId);
 }

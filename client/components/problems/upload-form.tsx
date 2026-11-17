@@ -41,13 +41,17 @@ const TEMPLATE = {
 
 type Issue = { path: string; message: string };
 export type Result =
-  | { kind: "ok"; published: boolean; slug: string; verification: RunResponse }
+  | { kind: "ok"; published: boolean; slug: string; verification?: RunResponse }
   | { kind: "error"; message: string; issues?: Issue[]; verification?: RunResponse };
 
 export function UploadForm() {
   const [text, setText] = useState(() => JSON.stringify(TEMPLATE, null, 2));
   const [busy, setBusy] = useState<"dry" | "publish" | null>(null);
   const [result, setResult] = useState<Result | null>(null);
+  // The last passing check, and the exact text it was for. Publishing needs
+  // one that matches what's in the editor now (the server enforces this too).
+  const [verified, setVerified] = useState<{ token: string; text: string; verification: RunResponse } | null>(null);
+  const isVerified = verified?.text === text;
   const fileRef = useRef<HTMLInputElement>(null);
 
   const submit = async (dryRun: boolean) => {
@@ -64,13 +68,17 @@ export function UploadForm() {
       const res = await fetch("/api/problems", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ problem, dryRun }),
+        body: JSON.stringify(dryRun ? { problem, dryRun } : { problem, verifyToken: isVerified ? verified.token : undefined }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (dryRun || body.needsVerification) setVerified(null);
         setResult({ kind: "error", message: body.error ?? `Failed (${res.status})`, issues: body.issues, verification: body.verification });
+      } else if (dryRun) {
+        setVerified({ token: body.verifyToken, text, verification: body.verification });
+        setResult({ kind: "ok", published: false, slug: body.slug, verification: body.verification });
       } else {
-        setResult({ kind: "ok", published: body.published, slug: body.slug, verification: body.verification });
+        setResult({ kind: "ok", published: true, slug: body.slug, verification: verified?.verification });
       }
     } catch {
       setResult({ kind: "error", message: "Network error" });
@@ -98,7 +106,12 @@ export function UploadForm() {
             <Button size="sm" variant="neutral" onClick={() => submit(true)} disabled={!!busy}>
               {busy === "dry" ? <Spinner /> : <FlaskConical />} Validate
             </Button>
-            <Button size="sm" onClick={() => submit(false)} disabled={!!busy}>
+            <Button
+              size="sm"
+              onClick={() => submit(false)}
+              disabled={!!busy || !isVerified}
+              title={isVerified ? undefined : "Validate first: the reference has to pass every test"}
+            >
               {busy === "publish" ? <Spinner /> : <Rocket />} Publish
             </Button>
           </div>

@@ -7,7 +7,7 @@ import { javascript } from "@codemirror/lang-javascript";
 import { php } from "@codemirror/lang-php";
 import { python } from "@codemirror/lang-python";
 import { rust } from "@codemirror/lang-rust";
-import { indentUnit, StreamLanguage, type LanguageSupport } from "@codemirror/language";
+import { foldService, indentUnit, StreamLanguage, type LanguageSupport } from "@codemirror/language";
 import { c, csharp, dart, kotlin, scala } from "@codemirror/legacy-modes/mode/clike";
 import { go } from "@codemirror/legacy-modes/mode/go";
 import { ruby } from "@codemirror/legacy-modes/mode/ruby";
@@ -23,8 +23,29 @@ import { yCollab } from "y-codemirror.next";
 import * as Y from "yjs";
 import type { Awareness } from "y-protocols/awareness";
 import type { LanguageId } from "@/lib/languages";
+import { getFolds, sharedFolds } from "@/lib/room/shared-folds";
 
-const legacy = (mode: Parameters<typeof StreamLanguage.define>[0]) => () => StreamLanguage.define(mode);
+/**
+ * Legacy (stream) modes have no syntax tree, so nothing in them is foldable by
+ * default. Fold by indentation instead: a line folds over the lines after it
+ * that are indented deeper.
+ */
+const indentFold = foldService.of((state, lineStart) => {
+  const ind = (text: string) => /^[\t ]*/.exec(text)![0].replace(/\t/g, "    ").length;
+  const first = state.doc.lineAt(lineStart);
+  if (!first.text.trim()) return null;
+  const base = ind(first.text);
+  let end = first.number;
+  for (let n = first.number + 1; n <= state.doc.lines; n++) {
+    const l = state.doc.line(n);
+    if (!l.text.trim()) continue;
+    if (ind(l.text) <= base) break;
+    end = n;
+  }
+  return end > first.number ? { from: first.to, to: state.doc.line(end).to } : null;
+});
+
+const legacy = (mode: Parameters<typeof StreamLanguage.define>[0]) => () => [StreamLanguage.define(mode), indentFold];
 
 export const LANG: Record<LanguageId, () => LanguageSupport | Extension> = {
   python: () => python(),
@@ -160,6 +181,7 @@ export function CodeEditor({
           themeC.current.of(dark ? [oneDark, darkOverrides] : lightTheme),
           roC.current.of(EditorState.readOnly.of(ro)),
           yCollab(ytext, awareness, { undoManager }),
+          ...(ytext.doc ? [sharedFolds(ytext, getFolds(ytext.doc))] : []),
           EditorView.lineWrapping,
         ],
       }),

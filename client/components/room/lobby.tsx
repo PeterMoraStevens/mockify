@@ -26,13 +26,18 @@ import {
   acquireMedia,
   audioContext,
   blackVideoTrack,
+  describeMediaError,
   isSynthetic,
   listDevices,
   loadDevicePrefs,
   loadMediaToggles,
+  openCamera,
+  openMic,
   saveDevicePrefs,
   saveMediaToggles,
+  silentAudioTrack,
   stopStream,
+  withTrack,
   type DevicePrefs,
 } from "@/lib/room/media";
 import { cn } from "@/lib/utils";
@@ -67,18 +72,11 @@ export function Lobby({
   const streamRef = useRef<MediaStream | null>(null);
   const handedOff = useRef(false);
 
-  // Start with the mic/camera choice from last time (read after mount: no localStorage on the server).
-  useEffect(() => {
-    const t = loadMediaToggles();
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- reading browser storage after mount
-    setMicOn(t.micOn);
-    setCamOn(t.camOn);
-  }, []);
-
   // Callers flip `acquiring` on first; it starts true for the initial grab.
-  const acquire = useCallback(async (p: DevicePrefs) => {
+  // Only opens the devices that are switched on, so "off" really means off.
+  const acquire = useCallback(async (p: DevicePrefs, want: { audio: boolean; video: boolean }) => {
     stopStream(streamRef.current);
-    const r = await acquireMedia(p);
+    const r = await acquireMedia(p, want);
     streamRef.current = r.stream;
     setStream(r.stream);
     setErrors({ audio: r.audioError, video: r.videoError });
@@ -87,9 +85,12 @@ export function Lobby({
   }, []);
 
   useEffect(() => {
+    // Start with the mic/camera choice from last time (read after mount: no localStorage on the server).
+    const t = loadMediaToggles();
+    setMicOn(t.micOn);
+    setCamOn(t.camOn);
     // acquire() only sets state after awaiting getUserMedia, i.e. from the external system's callback.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    acquire(loadDevicePrefs());
+    acquire(loadDevicePrefs(), { audio: t.micOn, video: t.camOn });
     return () => {
       if (!handedOff.current) stopStream(streamRef.current);
     };
@@ -118,25 +119,53 @@ export function Lobby({
     setPrefs(p);
     saveDevicePrefs(p);
     setAcquiring(true);
-    acquire(p);
+    acquire(p, { audio: micOn, video: camOn });
+  };
+
+  const swap = (track: MediaStreamTrack) => {
+    if (!streamRef.current) return;
+    const next = withTrack(streamRef.current, track);
+    streamRef.current = next;
+    setStream(next);
+  };
+
+  // Off: stop the device and swap in a synthetic track. On: open it again.
+  const toggle = async (kind: "audio" | "video") => {
+    const isOn = kind === "audio" ? micOn : camOn;
+    const setOn = kind === "audio" ? setMicOn : setCamOn;
+    const errKey = kind;
+    if (isOn) {
+      swap(kind === "audio" ? silentAudioTrack() : blackVideoTrack());
+      setOn(false);
+      saveMediaToggles(kind === "audio" ? { micOn: false, camOn } : { micOn, camOn: false });
+      return;
+    }
+    try {
+      const t = kind === "audio" ? await openMic(prefs) : await openCamera(prefs);
+      swap(t);
+      setOn(true);
+      setErrors((e) => ({ ...e, [errKey]: null }));
+      saveMediaToggles(kind === "audio" ? { micOn: true, camOn } : { micOn, camOn: true });
+      setDevices(await listDevices());
+    } catch (e) {
+      setErrors((x) => ({ ...x, [errKey]: describeMediaError(e) }));
+    }
   };
 
   const join = () => {
     if (!stream || !config) return;
     handedOff.current = true;
     const audio = stream.getAudioTracks()[0];
-    if (audio) audio.enabled = micOn && !isSynthetic(audio);
-    if (!camOn) {
-      const v = stream.getVideoTracks()[0];
-      if (v && !isSynthetic(v)) {
-        v.stop();
-        stream.removeTrack(v);
-        stream.addTrack(blackVideoTrack());
-      }
-    }
+    const video = stream.getVideoTracks()[0];
     // Resume the shared AudioContext inside a user gesture.
     audioContext().resume().catch(() => {});
-    onJoin({ stream, prefs, micOn, camOn, config });
+    onJoin({
+      stream,
+      prefs,
+      micOn: micOn && !!audio && !isSynthetic(audio),
+      camOn: camOn && !!video && !isSynthetic(video),
+      config,
+    });
   };
 
   const copyLink = async () => {
@@ -152,8 +181,11 @@ export function Lobby({
 
   const audioTrack = stream?.getAudioTracks()[0];
   const videoTrack = stream?.getVideoTracks()[0];
-  const hasCam = !!videoTrack && !isSynthetic(videoTrack);
-  const hasMic = !!audioTrack && !isSynthetic(audioTrack);
+  // Live means the device is open right now; ok means nothing has failed (it may just be switched off).
+  const camLive = !!videoTrack && !isSynthetic(videoTrack);
+  const micLive = !!audioTrack && !isSynthetic(audioTrack);
+  const camOk = !errors.video;
+  const micOk = !errors.audio;
 
   return (
     <div className="min-h-screen bg-grid">
@@ -173,15 +205,15 @@ export function Lobby({
               autoPlay
               playsInline
               muted
-              className={cn("size-full -scale-x-100 object-cover", (!camOn || !hasCam) && "invisible")}
+              className={cn("size-full -scale-x-100 object-cover", !camLive && "invisible")}
             />
-            {(!camOn || !hasCam) && (
+            {!camLive && (
               <div className="absolute inset-0 grid place-items-center">
                 <div className="text-center text-white">
                   <div className="mx-auto grid size-20 place-items-center rounded-full border-4 border-border bg-main font-heading text-3xl text-black">
                     {user.displayName[0]?.toUpperCase()}
                   </div>
-                  <p className="mt-3 font-heading">{hasCam ? "Camera is off" : errors.video ?? "No camera"}</p>
+                  <p className="mt-3 font-heading">{camOk ? "Camera is off" : errors.video}</p>
                 </div>
               </div>
             )}
@@ -194,17 +226,11 @@ export function Lobby({
               {user.displayName}
             </div>
             <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-3">
-              <RoundToggle on={micOn && hasMic} disabled={!hasMic} onClick={() => {
-                  setMicOn(!micOn);
-                  saveMediaToggles({ micOn: !micOn, camOn });
-                }} label="microphone">
-                {micOn && hasMic ? <Mic /> : <MicOff />}
+              <RoundToggle on={micLive} disabled={acquiring} onClick={() => void toggle("audio")} label="microphone">
+                {micLive ? <Mic /> : <MicOff />}
               </RoundToggle>
-              <RoundToggle on={camOn && hasCam} disabled={!hasCam} onClick={() => {
-                  setCamOn(!camOn);
-                  saveMediaToggles({ micOn, camOn: !camOn });
-                }} label="camera">
-                {camOn && hasCam ? <Camera /> : <CameraOff />}
+              <RoundToggle on={camLive} disabled={acquiring} onClick={() => void toggle("video")} label="camera">
+                {camLive ? <Camera /> : <CameraOff />}
               </RoundToggle>
             </div>
           </div>
@@ -227,7 +253,7 @@ export function Lobby({
           </div>
           <div className="mt-4">
             <div className="mb-2 text-sm font-heading">Mic level: say something</div>
-            <LevelMeter track={hasMic && micOn ? audioTrack! : null} />
+            <LevelMeter track={micLive ? audioTrack! : null} />
           </div>
         </section>
 
@@ -244,8 +270,8 @@ export function Lobby({
               Check your camera and mic first so you don&apos;t spend the first five minutes asking &ldquo;can you hear me?&rdquo;
             </p>
             <ul className="mt-6 space-y-3">
-              <CheckRow ok={hasCam} warn={!hasCam} label="Camera" detail={hasCam ? "Working" : errors.video ?? "Not found"} />
-              <CheckRow ok={hasMic} warn={!hasMic} label="Microphone" detail={hasMic ? "Working" : errors.audio ?? "Not found"} />
+              <CheckRow ok={camOk} warn={!camOk} label="Camera" detail={errors.video ?? (camLive ? "Working" : "Off")} />
+              <CheckRow ok={micOk} warn={!micOk} label="Microphone" detail={errors.audio ?? (micLive ? "Working" : "Off")} />
             </ul>
             {(errors.audio || errors.video) && (
               <Button
@@ -254,7 +280,10 @@ export function Lobby({
                 className="mt-4"
                 onClick={() => {
                   setAcquiring(true);
-                  acquire(prefs);
+                  // Retrying means "I want these on", so ask for both.
+                  setMicOn(true);
+                  setCamOn(true);
+                  acquire(prefs, { audio: true, video: true });
                 }}
               >
                 <RefreshCw /> Try devices again

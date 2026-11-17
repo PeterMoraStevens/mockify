@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import Navbar from "@/components/navbar";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -18,7 +19,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Mockify",
-  description: "Self-hosted, peer-to-peer mock interviews: shared editor, video, whiteboard and a real judge.",
+  description:
+    "Self-hosted, peer-to-peer mock interviews: shared editor, video, whiteboard and a real judge.",
 };
 
 export default async function RootLayout({
@@ -29,17 +31,36 @@ export default async function RootLayout({
   const user = await getCurrentUser();
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <Navbar user={user ? { displayName: user.displayName, username: user.username } : null} />
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <Navbar
+            user={
+              user
+                ? { displayName: user.displayName, username: user.username }
+                : null
+            }
+          />
           <Toaster
             position="bottom-left"
             toastOptions={{
-              className: "!rounded-base !border-2 !border-border !shadow-shadow !font-base",
+              className:
+                "!rounded-base !border-2 !border-border !shadow-shadow !font-base",
             }}
           />
           {children}
         </ThemeProvider>
+        <Script
+          src="https://umami.petermorastevens.rocks/script.js"
+          data-website-id="95367f2f-7699-4c5a-8ddc-792997811c05"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
