@@ -46,9 +46,11 @@ import {
   BASE_TYPES,
   MAX_PARAM_DEPTH,
   MAX_RETURN_DEPTH,
+  NODE_TYPES,
   generateStarter,
   ioSection,
   makeType,
+  nodeOf,
   parseType,
   typeLabel,
   validateSignature,
@@ -68,7 +70,11 @@ const BASE_PLACEHOLDER: Record<BaseType, [string, string, string]> = {
   bool: ["true", "true false true", "[[true],[false,true]]"],
   string: ["hello world", "apple banana cherry", '[["ab","cd"],["ef"]]'],
 };
+const NODE_PLACEHOLDER = { ListNode: "[1,2,3]", TreeNode: "[3,9,20,null,null,15,7]" } as const;
+const NODE_NAMES = { ListNode: "linked list", TreeNode: "binary tree" } as const;
 const placeholder = (type: string) => {
+  const k = nodeOf(type);
+  if (k) return NODE_PLACEHOLDER[k];
   const t = parseType(type) ?? { base: "int" as BaseType, depth: 0 };
   return BASE_PLACEHOLDER[t.base][Math.min(t.depth, 2)];
 };
@@ -81,7 +87,9 @@ const BASE_NAMES: Record<BaseType, string> = { int: "int", long: "long (64-bit)"
  * array holds. So int[][] is: array of… → array of… → int.
  */
 function TypePicker({ value, onChange, maxDepth, label }: { value: string; onChange: (t: string) => void; maxDepth: number; label: string }) {
-  const t = parseType(value) ?? { base: "int" as BaseType, depth: 0 };
+  // A list or tree is its own top-level type (it can't go inside an array).
+  const node = nodeOf(value);
+  const t = node ? { base: node, depth: 0 } : (parseType(value) ?? { base: "int" as BaseType, depth: 0 });
   return (
     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5" aria-label={`${label} type`} role="group">
       {Array.from({ length: t.depth + 1 }, (_, level) => {
@@ -92,7 +100,13 @@ function TypePicker({ value, onChange, maxDepth, label }: { value: string; onCha
             <Select
               value={isArray ? "array" : t.base}
               onValueChange={(v) =>
-                onChange(v === "array" ? makeType(t.base, level + 1) : makeType(v as BaseType, level))
+                onChange(
+                  v === "array"
+                    ? makeType(nodeOf(t.base) ? "int" : (t.base as BaseType), level + 1)
+                    : nodeOf(v)
+                      ? v
+                      : makeType(v as BaseType, level),
+                )
               }
             >
               <SelectTrigger className="h-9 w-32" aria-label={level === 0 ? `${label} type` : `${label} element type, level ${level}`}>
@@ -104,6 +118,12 @@ function TypePicker({ value, onChange, maxDepth, label }: { value: string; onCha
                     {BASE_NAMES[b]}
                   </SelectItem>
                 ))}
+                {level === 0 &&
+                  NODE_TYPES.map((k) => (
+                    <SelectItem key={k} value={k}>
+                      {NODE_NAMES[k]}
+                    </SelectItem>
+                  ))}
                 <SelectItem value="array" disabled={level >= maxDepth}>
                   array of…{level >= maxDepth ? " (max depth)" : ""}
                 </SelectItem>

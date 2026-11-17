@@ -1,0 +1,101 @@
+{
+  "slug": "letter-combinations-of-a-phone-number",
+  "title": "Letter Combinations of a Phone Number",
+  "difficulty": "medium",
+  "tags": [
+    "backtracking",
+    "string"
+  ],
+  "license": "MIT",
+  "source": {
+    "name": "Mockify seed set"
+  },
+  "description": "On a phone keypad, `2`→`abc`, `3`→`def`, `4`→`ghi`, `5`→`jkl`, `6`→`mno`, `7`→`pqrs`, `8`→`tuv`, `9`→`wxyz`.\n\nGiven a string of digits from `2` to `9`, return every letter string it could spell, in lexicographic order. If `digits` is empty, return an empty list.\n\n### Input\n- Line 1: `digits`, a string (the whole line).\n\n### Output\nThe strings on one line, separated by spaces.\n\n### Constraints\n- `0 <= digits.length <= 4`\n- Each digit is between `2` and `9`.",
+  "signature": {
+    "params": [
+      {
+        "name": "digits",
+        "type": "string"
+      }
+    ],
+    "returns": "string[]"
+  },
+  "examples": [
+    {
+      "input": "23\n",
+      "output": "ad ae af bd be bf cd ce cf\n"
+    },
+    {
+      "input": "\n",
+      "output": "\n"
+    },
+    {
+      "input": "2\n",
+      "output": "a b c\n"
+    }
+  ],
+  "tests": [
+    {
+      "input": "7\n",
+      "output": "p q r s\n"
+    },
+    {
+      "input": "99\n",
+      "output": "ww wx wy wz xw xx xy xz yw yx yy yz zw zx zy zz\n"
+    },
+    {
+      "input": "234\n",
+      "output": "adg adh adi aeg aeh aei afg afh afi bdg bdh bdi beg beh bei bfg bfh bfi cdg cdh cdi ceg ceh cei cfg cfh cfi\n"
+    },
+    {
+      "input": "79\n",
+      "output": "pw px py pz qw qx qy qz rw rx ry rz sw sx sy sz\n"
+    },
+    {
+      "input": "2345\n",
+      "output": "adgj adgk adgl adhj adhk adhl adij adik adil aegj aegk aegl aehj aehk aehl aeij aeik aeil afgj afgk afgl afhj afhk afhl afij afik afil bdgj bdgk bdgl bdhj bdhk bdhl bdij bdik bdil begj begk begl behj behk behl beij beik beil bfgj bfgk bfgl bfhj bfhk bfhl bfij bfik bfil cdgj cdgk cdgl cdhj cdhk cdhl cdij cdik cdil cegj cegk cegl cehj cehk cehl ceij ceik ceil cfgj cfgk cfgl cfhj cfhk cfhl cfij cfik cfil\n"
+    },
+    {
+      "input": "5683\n",
+      "output": "jmtd jmte jmtf jmud jmue jmuf jmvd jmve jmvf jntd jnte jntf jnud jnue jnuf jnvd jnve jnvf jotd jote jotf joud joue jouf jovd jove jovf kmtd kmte kmtf kmud kmue kmuf kmvd kmve kmvf kntd knte kntf knud knue knuf knvd knve knvf kotd kote kotf koud koue kouf kovd kove kovf lmtd lmte lmtf lmud lmue lmuf lmvd lmve lmvf lntd lnte lntf lnud lnue lnuf lnvd lnve lnvf lotd lote lotf loud loue louf lovd love lovf\n"
+    },
+    {
+      "input": "2222\n",
+      "output": "aaaa aaab aaac aaba aabb aabc aaca aacb aacc abaa abab abac abba abbb abbc abca abcb abcc acaa acab acac acba acbb acbc acca accb accc baaa baab baac baba babb babc baca bacb bacc bbaa bbab bbac bbba bbbb bbbc bbca bbcb bbcc bcaa bcab bcac bcba bcbb bcbc bcca bccb bccc caaa caab caac caba cabb cabc caca cacb cacc cbaa cbab cbac cbba cbbb cbbc cbca cbcb cbcc ccaa ccab ccac ccba ccbb ccbc ccca cccb cccc\n"
+    }
+  ],
+  "starters": {
+    "python": "import sys\nfrom typing import List\n\n\ndef solve(digits: str) -> List[str]:\n    # Return all letter strings the digits could spell, sorted.\n    return []\n\n\ndef main() -> None:\n    lines = sys.stdin.read().split(\"\\n\")\n\n    def line(i: int) -> str:\n        return lines[i].rstrip(\"\\r\") if i < len(lines) else \"\"\n\n    digits = line(0)\n    result = solve(digits)\n    print(\" \".join(v for v in result))\n\n\nif __name__ == \"__main__\":\n    main()\n",
+    "javascript": "function solve(digits) {\n  // Return all letter strings the digits could spell, sorted.\n  return [];\n}\n\nfunction readWords(s) {\n  return s.trim().split(/\\s+/).filter(Boolean);\n}\n\nfunction main() {\n  const lines = require(\"fs\").readFileSync(0, \"utf8\").split(\"\\n\");\n  const line = (i) => (lines[i] ?? \"\").replace(/\\r$/, \"\");\n  const digits = line(0);\n  const result = solve(digits);\n  console.log(result.map((v) => String(v)).join(\" \"));\n}\n\nmain();\n",
+    "typescript": "/// <reference lib=\"es2022\" />\ndeclare const require: any;\n\nfunction solve(digits: string): string[] {\n  // Return all letter strings the digits could spell, sorted.\n  return [];\n}\n\nfunction readWords(s: string): string[] {\n  return s.trim().split(/\\s+/).filter(Boolean);\n}\n\nfunction main(): void {\n  const lines: string[] = require(\"fs\").readFileSync(0, \"utf8\").split(\"\\n\");\n  const line = (i: number): string => (lines[i] ?? \"\").replace(/\\r$/, \"\");\n  const digits = line(0);\n  const result = solve(digits);\n  console.log(result.map((v) => String(v)).join(\" \"));\n}\n\nmain();\n",
+    "java": "import java.io.*;\nimport java.util.*;\n\npublic class Main {\n    static String[] solve(String digits) {\n        // Return all letter strings the digits could spell, sorted.\n        return new String[0];\n    }\n\n    static class Tok {\n        final String[] t;\n        int i = 0;\n        Tok(String s) {\n            String x = s.trim();\n            t = x.isEmpty() ? new String[0] : x.split(\"\\\\s+\");\n        }\n        String next() { return i < t.length ? t[i++] : \"0\"; }\n        int left() { return t.length - i; }\n    }\n\n    static String line(List<String> lines, int i) {\n        return i < lines.size() ? lines.get(i) : \"\";\n    }\n\n    public static void main(String[] args) throws IOException {\n        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));\n        List<String> lines = new ArrayList<>();\n        for (String _l; (_l = br.readLine()) != null; ) lines.add(_l);\n        String digits = line(lines, 0);\n        String[] result = solve(digits);\n        StringBuilder _sb = new StringBuilder();\n        for (int _i = 0; _i < result.length; _i++) _sb.append(_i > 0 ? \" \" : \"\").append(result[_i]);\n        System.out.println(_sb);\n    }\n}\n",
+    "c": "#include <stdbool.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\nchar** solve(char* digits, int* returnSize) {\n    // Return all letter strings the digits could spell, sorted.\n    *returnSize = 0;\n    return NULL;\n}\n\nstatic char* read_all(void) {\n    size_t cap = 1 << 16, len = 0;\n    char* buf = malloc(cap);\n    for (;;) {\n        if (len + 1 >= cap) buf = realloc(buf, cap *= 2);\n        size_t r = fread(buf + len, 1, cap - len - 1, stdin);\n        if (r == 0) break;\n        len += r;\n    }\n    buf[len] = '\\0';\n    return buf;\n}\n\nstatic char** g_lines;\nstatic int g_count;\n\nstatic char* line(int i) {\n    return i < g_count ? g_lines[i] : \"\";\n}\n\ntypedef struct {\n    char** t;\n    int n, i;\n} Tok;\n\n__attribute__((unused)) static Tok tok(const char* s) {\n    Tok k = {0};\n    char* copy = strdup(s);\n    int cap = 16;\n    k.t = malloc(cap * sizeof(char*));\n    for (char* w = strtok(copy, \" \\t\"); w; w = strtok(NULL, \" \\t\")) {\n        if (k.n == cap) k.t = realloc(k.t, (cap *= 2) * sizeof(char*));\n        k.t[k.n++] = w;\n    }\n    return k;\n}\n\n__attribute__((unused)) static char* tk_next(Tok* k) {\n    return k->i < k->n ? k->t[k->i++] : \"0\";\n}\n\nint main(void) {\n    char* input = read_all();\n    int cap = 8;\n    g_lines = malloc(cap * sizeof(char*));\n    for (char* p = input;;) {\n        if (g_count == cap) g_lines = realloc(g_lines, (cap *= 2) * sizeof(char*));\n        g_lines[g_count++] = p;\n        char* nl = strchr(p, '\\n');\n        size_t n = nl ? (size_t)(nl - p) : strlen(p);\n        if (n && p[n - 1] == '\\r') p[n - 1] = '\\0';\n        if (!nl) break;\n        *nl = '\\0';\n        p = nl + 1;\n    }\n    char* digits = line(0);\n    int returnSize = 0;\n    char** result = solve(digits, &returnSize);\n    for (int i = 0; i < returnSize; i++) printf(i ? \" %s\" : \"%s\", result[i] ? result[i] : \"\");\n    printf(\"\\n\");\n    return 0;\n}\n",
+    "cpp": "#include <algorithm>\n#include <climits>\n#include <iostream>\n#include <map>\n#include <numeric>\n#include <queue>\n#include <set>\n#include <sstream>\n#include <stack>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <vector>\nusing namespace std;\n\nvector<string> solve(string& digits) {\n    // Return all letter strings the digits could spell, sorted.\n    return {};\n}\n\nstruct Tok {\n    vector<string> t;\n    size_t i = 0;\n    explicit Tok(const string& s) {\n        istringstream is(s);\n        for (string w; is >> w;) t.push_back(w);\n    }\n    string next() { return i < t.size() ? t[i++] : \"0\"; }\n};\n\nstatic vector<string> g_lines;\nstatic string line(size_t i) { return i < g_lines.size() ? g_lines[i] : string(); }\n\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n    for (string l; getline(cin, l);) {\n        if (!l.empty() && l.back() == '\\r') l.pop_back();\n        g_lines.push_back(l);\n    }\n    string digits = line(0);\n    vector<string> result = solve(digits);\n    for (size_t i = 0; i < result.size(); i++) cout << (i ? \" \" : \"\") << result[i];\n    cout << \"\\n\";\n    return 0;\n}\n",
+    "csharp": "using System;\nusing System.Collections.Generic;\nusing System.Linq;\n\npublic class Program {\n    static string[] Solve(string digits) {\n        // Return all letter strings the digits could spell, sorted.\n        return new string[0];\n    }\n\n    class Tok {\n        readonly string[] t;\n        int i;\n        public Tok(string s) { t = s.Split(new[] { ' ', '\\t' }, StringSplitOptions.RemoveEmptyEntries); }\n        public string Next() => i < t.Length ? t[i++] : \"0\";\n        public int Left => t.Length - i;\n    }\n\n    static string[] lines = new string[0];\n    static string Line(int i) => i < lines.Length ? lines[i] : \"\";\n\n    public static void Main() {\n        lines = Console.In.ReadToEnd().Split('\\n').Select(_l => _l.TrimEnd('\\r')).ToArray();\n        string digits = Line(0);\n        var result = Solve(digits);\n        Console.WriteLine(string.Join(\" \", result.Select(_v => _v.ToString())));\n    }\n}\n",
+    "go": "package main\n\nimport (\n\t\"fmt\"\n\t\"io\"\n\t\"os\"\n\t\"strings\"\n)\n\nfunc solve(digits string) []string {\n\t// Return all letter strings the digits could spell, sorted.\n\treturn []string{}\n}\n\nfunc main() {\n\tdata, _ := io.ReadAll(os.Stdin)\n\tlines := strings.Split(strings.ReplaceAll(string(data), \"\\r\", \"\"), \"\\n\")\n\tline := func(i int) string {\n\t\tif i < len(lines) {\n\t\t\treturn lines[i]\n\t\t}\n\t\treturn \"\"\n\t}\n\tdigits := line(0)\n\tresult := solve(digits)\n\tparts := make([]string, len(result))\n\tfor i, v := range result {\n\t\tparts[i] = fmt.Sprint(v)\n\t}\n\tfmt.Println(strings.Join(parts, \" \"))\n}\n",
+    "rust": "#![allow(unused_imports, unused_variables, unused_mut, dead_code)]\nuse std::collections::{HashMap, HashSet, VecDeque};\nuse std::io::{self, Read};\n\nfn solve(digits: String) -> Vec<String> {\n    // Return all letter strings the digits could spell, sorted.\n    vec![]\n}\n\nfn line<'a>(lines: &[&'a str], i: usize) -> &'a str {\n    lines.get(i).copied().unwrap_or(\"\")\n}\n\nfn main() {\n    let mut input = String::new();\n    io::stdin().read_to_string(&mut input).unwrap();\n    let lines: Vec<&str> = input.split('\\n').map(|l| l.trim_end_matches('\\r')).collect();\n    let digits: String = line(&lines, 0).to_string();\n    let result = solve(digits);\n    let parts: Vec<String> = result.iter().map(|v| v.to_string()).collect();\n    println!(\"{}\", parts.join(\" \"));\n}\n",
+    "kotlin": "fun solve(digits: String): Array<String> {\n    // Return all letter strings the digits could spell, sorted.\n    return arrayOf<String>()\n}\n\nclass Tok(s: String) {\n    private val t = s.trim().split(Regex(\"\\\\s+\")).filter { it.isNotEmpty() }\n    private var i = 0\n    fun next(): String = if (i < t.size) t[i++] else \"0\"\n    fun left(): Int = t.size - i\n}\n\nfun main() {\n    val lines = generateSequence(::readLine).map { it.trimEnd('\\r') }.toList()\n    fun line(i: Int): String = lines.getOrElse(i) { \"\" }\n    val digits = line(0)\n    val result = solve(digits)\n    println(result.joinToString(\" \"))\n}\n",
+    "swift": "import Foundation\n\nfunc solve(_ digits: String) -> [String] {\n    // Return all letter strings the digits could spell, sorted.\n    return []\n}\n\nfinal class Tok {\n    let t: [String]\n    var i = 0\n    init(_ s: String) { t = s.split(whereSeparator: { $0 == \" \" || $0 == \"\\t\" }).map(String.init) }\n    func next() -> String {\n        if i < t.count { i += 1; return t[i - 1] }\n        return \"0\"\n    }\n    var left: Int { t.count - i }\n}\n\nvar lines: [String] = []\nwhile let l = readLine() { lines.append(l) }\nfunc line(_ i: Int) -> String { i < lines.count ? lines[i] : \"\" }\n\nlet digits: String = line(0)\nlet result = solve(digits)\nprint(result.map { String($0) }.joined(separator: \" \"))\n",
+    "ruby": "def solve(digits)\n  # Return all letter strings the digits could spell, sorted.\n  []\nend\n\ndef line(lines, i)\n  (lines[i] || \"\").chomp\nend\n\nlines = STDIN.read.split(\"\\n\", -1)\ndigits = line(lines, 0)\nresult = solve(digits)\nputs result.map { |v| v.to_s }.join(\" \")\n",
+    "php": "<?php\n\nfunction solve(string $digits): array {\n    // Return all letter strings the digits could spell, sorted.\n    return [];\n}\n\nfunction line(array $lines, int $i): string {\n    return rtrim($lines[$i] ?? \"\", \"\\r\");\n}\n\nfunction readWords(string $s): array {\n    return preg_split('/\\s+/', trim($s), -1, PREG_SPLIT_NO_EMPTY);\n}\n\n$lines = explode(\"\\n\", stream_get_contents(STDIN));\n$digits = line($lines, 0);\n$result = solve($digits);\necho implode(\" \", array_map(fn($v) => $v, $result)), \"\\n\";\n",
+    "scala": "import scala.collection.mutable\n\nclass Tok(s: String) {\n  private val t = s.trim.split(\"\\\\s+\").filter(_.nonEmpty)\n  private var i = 0\n  def next(): String = if (i < t.length) { i += 1; t(i - 1) } else \"0\"\n  def left: Int = t.length - i\n}\n\nobject Main {\n  def solve(digits: String): Array[String] = {\n    // Return all letter strings the digits could spell, sorted.\n    Array.empty[String]\n  }\n\n  def main(args: Array[String]): Unit = {\n    val lines = scala.io.Source.stdin.getLines().toArray\n    def line(i: Int): String = if (i < lines.length) lines(i).stripSuffix(\"\\r\") else \"\"\n    val digits = line(0)\n    val result = solve(digits)\n    println(result.mkString(\" \"))\n  }\n}\n",
+    "dart": "import 'dart:io';\n\nList<String> solve(String digits) {\n  // Return all letter strings the digits could spell, sorted.\n  return <String>[];\n}\n\nclass Tok {\n  final List<String> t;\n  int i = 0;\n  Tok(String s) : t = s.trim().split(RegExp(r'\\s+')).where((w) => w.isNotEmpty).toList();\n  String next() => i < t.length ? t[i++] : '0';\n  int get left => t.length - i;\n}\n\nvoid main() {\n  final lines = <String>[];\n  while (true) {\n    final l = stdin.readLineSync();\n    if (l == null) break;\n    lines.add(l);\n  }\n  String line(int i) => i < lines.length ? lines[i] : '';\n  final String digits = line(0);\n  final result = solve(digits);\n  print(result.join(' '));\n}\n",
+    "bash": "#!/usr/bin/env bash\n\n# Return all letter strings the digits could spell, sorted.\n# Arguments: $1 = digits. Echo the values, space-separated.\nsolve() {\n  local digits=\"${1}\"\n  echo \"\"\n}\n\nlines=()\nwhile IFS= read -r l || [[ -n \"$l\" ]]; do lines+=(\"${l%$'\\r'}\"); done\nsolve \"${lines[0]}\"\n"
+  },
+  "interviewer": {
+    "hints": [
+      "Each digit multiplies the number of strings by 3 or 4. Build them digit by digit."
+    ],
+    "followUps": [
+      "Generate them lazily, one at a time."
+    ],
+    "expectedComplexity": {
+      "time": "O(4^n · n)",
+      "space": "O(n) besides the output"
+    }
+  },
+  "reference": {
+    "language": "python",
+    "code": "import bisect\nimport heapq\nimport math\nfrom collections import Counter, defaultdict, deque\nimport sys\nfrom typing import List\n\n\ndef solve(digits: str) -> List[str]:\n    # Return all letter strings the digits could spell, sorted.\n    if not digits:\n        return []\n    keys = {\"2\": \"abc\", \"3\": \"def\", \"4\": \"ghi\", \"5\": \"jkl\", \"6\": \"mno\", \"7\": \"pqrs\", \"8\": \"tuv\", \"9\": \"wxyz\"}\n    out = [\"\"]\n    for d in digits:\n        out = [p + ch for p in out for ch in keys[d]]\n    return out\n\n\ndef main() -> None:\n    lines = sys.stdin.read().split(\"\\n\")\n\n    def line(i: int) -> str:\n        return lines[i].rstrip(\"\\r\") if i < len(lines) else \"\"\n\n    digits = line(0)\n    result = solve(digits)\n    print(\" \".join(v for v in result))\n\n\nif __name__ == \"__main__\":\n    main()\n"
+  }
+}

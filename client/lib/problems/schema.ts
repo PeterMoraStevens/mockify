@@ -81,14 +81,17 @@ export type Problem = z.infer<typeof problemSchema>;
 export type TestCase = z.infer<typeof testCaseSchema>;
 export type Difficulty = Problem["difficulty"];
 
-/** What the candidate's browser receives. No hidden tests, no reference, no hints. */
+/**
+ * What the candidate's browser receives. No hidden tests, no reference, no
+ * hints, and no tags: a tag like "dynamic-programming" gives the approach away.
+ */
 export type PublicProblem = Pick<
   Problem,
-  "slug" | "title" | "difficulty" | "tags" | "license" | "source" | "description" | "examples" | "starters" | "signature"
+  "slug" | "title" | "difficulty" | "license" | "source" | "description" | "examples" | "starters" | "signature"
 > & { hiddenCount: number };
 
 /** What the interviewer's browser receives, on top of the public view. */
-export type InterviewerProblem = PublicProblem & { interviewer: Problem["interviewer"] };
+export type InterviewerProblem = PublicProblem & Pick<Problem, "tags" | "interviewer">;
 
 export type ProblemSummary = Pick<Problem, "slug" | "title" | "difficulty" | "tags"> & {
   languages: string[];

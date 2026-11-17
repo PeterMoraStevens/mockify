@@ -117,9 +117,16 @@ function TestsView({ run, slot }: { run: RunState; slot: Slot | null }) {
 
   const examples = last.results.filter((r) => r.kind === "example");
   const hidden = last.results.filter((r) => r.kind === "hidden");
+  // A crash usually happens the same way on every example, so lead with the first one's error.
+  const crashed = examples.find((r) => r.status !== "ok" && r.stderr?.trim());
   return (
     <div className="p-4">
       <RunMeta last={last} slot={slot} />
+      {crashed && (
+        <div className="mb-3">
+          <ErrorBlock title={`${crashed.statusText} on example ${crashed.index + 1}`} body={tidyStderr(crashed.stderr!)} />
+        </div>
+      )}
       <div className="space-y-2">
         {examples.map((r) => (
           <ExampleResult key={r.index} r={r} defaultOpen={!r.passed} />
@@ -134,7 +141,7 @@ function TestsView({ run, slot }: { run: RunState; slot: Slot | null }) {
             {hidden.map((r, i) => (
               <span
                 key={r.index}
-                title={`${r.statusText}${r.timeMs !== null ? ` · ${r.timeMs}ms` : ""}`}
+                title={`${r.statusText}${r.errorKind ? ` (${r.errorKind})` : ""}${r.timeMs !== null ? ` · ${r.timeMs}ms` : ""}`}
                 className={cn(
                   "grid h-7 min-w-9 place-items-center rounded-sm border-2 border-border px-1 font-mono text-[11px] font-bold text-black",
                   r.passed ? "bg-accent-green" : "bg-accent-red",
@@ -144,11 +151,22 @@ function TestsView({ run, slot }: { run: RunState; slot: Slot | null }) {
               </span>
             ))}
           </div>
-          {hidden.some((h) => !h.passed) && (
-            <p className="mt-2 text-xs text-muted">
-              First failure: {hidden.find((h) => !h.passed)!.statusText}. Hidden inputs aren&apos;t shown, so look for edge cases.
-            </p>
-          )}
+          {(() => {
+            const f = hidden.find((h) => !h.passed);
+            if (!f) return null;
+            return (
+              <p className="mt-2 text-xs text-muted">
+                First failure: hidden test {hidden.indexOf(f) + 1}, {f.statusText}
+                {f.errorKind && (
+                  <>
+                    {" "}
+                    raising <code className="rounded-sm border border-border bg-background px-1 font-mono text-foreground">{f.errorKind}</code>
+                  </>
+                )}
+                . Hidden inputs and error messages aren&apos;t shown, so look for edge cases.
+              </p>
+            );
+          })()}
         </div>
       )}
     </div>
@@ -177,25 +195,26 @@ function ExampleResult({ r, defaultOpen }: { r: TestResult; defaultOpen: boolean
       </button>
       {open && (
         <div className="grid gap-px bg-border sm:grid-cols-3">
+          {r.stderr && (
+            // Errors first: they explain the output below. On a passing test it's just debug prints.
+            <div className="sm:col-span-3">
+              <Cell label={r.status === "ok" ? "stderr (debug output)" : "Error output"} value={tidyStderr(r.stderr)} bad={r.status !== "ok"} tall />
+            </div>
+          )}
           <Cell label="Input" value={r.input ?? ""} />
           <Cell label="Expected" value={r.expected ?? ""} />
           <Cell label="Your output" value={r.stdout ?? ""} bad={!r.passed} />
-          {r.stderr && (
-            <div className="sm:col-span-3">
-              <Cell label="stderr" value={r.stderr} bad />
-            </div>
-          )}
         </div>
       )}
     </div>
   );
 }
 
-function Cell({ label, value, bad }: { label: string; value: string; bad?: boolean }) {
+function Cell({ label, value, bad, tall }: { label: string; value: string; bad?: boolean; tall?: boolean }) {
   return (
     <div className="min-w-0 bg-secondary-background p-2">
       <div className={cn("mb-1 text-[10px] font-heading uppercase tracking-wider", bad ? "text-accent-red" : "text-muted")}>{label}</div>
-      <pre className="max-h-40 overflow-auto font-mono text-xs leading-5 whitespace-pre-wrap break-all">
+      <pre className={cn("overflow-auto font-mono text-xs leading-5 whitespace-pre-wrap break-all", tall ? "max-h-64" : "max-h-40")}>
         {value === "" ? <span className="italic opacity-50">(empty)</span> : value.replace(/\n$/, "")}
       </pre>
     </div>
@@ -242,17 +261,20 @@ function CustomView({
         ) : last?.compileError ? (
           <ErrorBlock title="Compilation error" body={last.compileError} />
         ) : (
-          <pre className="min-h-24 flex-1 overflow-auto rounded-base border-2 border-border bg-background p-2 font-mono text-xs leading-5 whitespace-pre-wrap">
-            {c ? (
-              <>
-                {c.stdout}
-                {c.stderr && <span className="text-accent-red">{c.stderr}</span>}
-                {!c.stdout && !c.stderr && <span className="italic opacity-50">(no output)</span>}
-              </>
-            ) : (
-              <span className="italic opacity-50">Output shows up here. ⌘/Ctrl + Enter runs.</span>
-            )}
-          </pre>
+          <div className="flex min-h-24 flex-1 flex-col gap-2">
+            {c && c.status !== "ok" && c.stderr.trim() && <ErrorBlock title={c.statusText} body={tidyStderr(c.stderr)} />}
+            <pre className="min-h-24 flex-1 overflow-auto rounded-base border-2 border-border bg-background p-2 font-mono text-xs leading-5 whitespace-pre-wrap">
+              {c ? (
+                <>
+                  {c.stdout}
+                  {c.status === "ok" && c.stderr && <span className="text-accent-red">{c.stderr}</span>}
+                  {!c.stdout && !(c.status === "ok" && c.stderr) && <span className="italic opacity-50">(no output)</span>}
+                </>
+              ) : (
+                <span className="italic opacity-50">Output shows up here. ⌘/Ctrl + Enter runs.</span>
+              )}
+            </pre>
+          </div>
         )}
       </div>
     </div>
@@ -261,4 +283,12 @@ function CustomView({
 
 function Empty({ children }: { children: React.ReactNode }) {
   return <div className="grid h-full place-items-center p-6 text-center text-sm text-muted">{<p className="max-w-xs">{children}</p>}</div>;
+}
+
+/**
+ * Runner paths like /piston/jobs/3f2a…/file0.code mean nothing to the person
+ * reading the error; shorten them to the file name.
+ */
+function tidyStderr(s: string): string {
+  return s.replace(/\/piston\/jobs\/[\w-]+\//g, "").replace(/\n+$/, "");
 }

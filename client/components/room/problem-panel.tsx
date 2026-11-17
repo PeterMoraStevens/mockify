@@ -166,7 +166,8 @@ function ProblemTab({
       )}
       <div className="flex flex-wrap items-center gap-2">
         <DifficultyBadge difficulty={problem.difficulty} />
-        {problem.tags.map((t) => (
+        {/* Tags hint at the approach, so only the interviewer sees them. */}
+        {isInterviewer && "tags" in problem && problem.tags.map((t) => (
           <Badge key={t} tone="neutral">
             {t}
           </Badge>

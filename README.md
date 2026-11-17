@@ -53,6 +53,8 @@ It used to be hard to agree on where to hold a mock interview: one person wants 
 
 Requirements: Node 22.13+ (24 recommended) and a self-hosted [Piston](https://github.com/engineer-man/piston) instance you can reach, with runtimes installed for the languages you want (Mockify maps to these packages: `python node typescript java gcc dotnet go rust kotlin swift ruby php scala dart bash`; any that are missing show an install hint in the room).
 
+> **Piston setting you must change:** start Piston with `PISTON_OUTPUT_MAX_SIZE=65536`. Its default keeps only 1,024 characters of output, so any test with a longer answer (14 of the built-in problems, e.g. Group Anagrams, Game of Life, Rotate Image) fails with "Output Limit Exceeded" even when the code is correct.
+
 ### Local development
 
 ```bash
@@ -123,6 +125,10 @@ Problems are plain stdin/stdout, so they work in every Piston language with no e
 | `string` | the whole line (spaces allowed) | `hello world` |
 | 1-D array | elements separated by spaces | `[2,7,11]` → `2 7 11` |
 | 2-D and deeper | length-prefixed, recursively | `[[1,2],[3]]` → `2 2 1 2 1 3` |
+| `ListNode` (linked list) | the values in order | `[1,2,3]` → `1 2 3` |
+| `TreeNode` (binary tree) | level order, `null` for a missing child, trailing `null`s dropped | `[3,9,20,null,null,15,7]` → `3 9 20 null null 15 7` |
+
+Lists and trees hold integers and can be a parameter or the return type, but not inside an array; an empty line is an empty list/tree. Their starters (every language except Bash) have a marked "node classes" section near the top. In a room, the **Node classes** switch next to the language picker either fills it with ready-made `ListNode`/`TreeNode` classes or replaces them with a short description of what the harness needs, so the candidate writes the classes from scratch (the default). Switching only rewrites that section, so code typed elsewhere is kept.
 
 Strings inside arrays are single words. Output is the scalar on one line, a 1-D array space-separated on one line, or a 2-D array as one line per row. In the builder, type nested arrays as JSON; the starter code handles the encoding. See `client/problems/*.json` for complete examples:
 

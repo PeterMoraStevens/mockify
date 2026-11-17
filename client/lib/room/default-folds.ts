@@ -1,7 +1,11 @@
+import { nodeBlockLines } from "@/lib/problems/nodes";
+
 /**
  * Which parts of a starter to fold when it's loaded: everything except the
  * solve() function, i.e. the imports/prelude above it and the input readers
- * and main() below it. Language-agnostic: finds the first `solve(` definition
+ * and main() below it. A "node classes" section is handled on its own: folded
+ * when the classes are provided, left open when it holds the instructions for
+ * writing them yourself. Language-agnostic: finds the first `solve(` definition
  * and its end by indentation, which every generated starter follows.
  *
  * Returns character ranges in CodeMirror's fold convention: each starts at the
@@ -47,7 +51,14 @@ export function defaultFoldRanges(text: string): { from: number; to: number }[] 
   // Above: stop before any comment block attached to solve (it's the docs).
   let top = def - 1;
   while (top >= 0 && isComment(top)) top--;
-  region(0, top);
+  const nodes = nodeBlockLines(lines);
+  if (nodes && nodes.end < def) {
+    region(0, nodes.begin - 1);
+    if (nodes.mode === "provided") out.push({ from: endOf(nodes.begin), to: endOf(nodes.end) });
+    region(nodes.end + 1, top);
+  } else {
+    region(0, top);
+  }
   region(last + 1, lines.length - 1);
   return out;
 }

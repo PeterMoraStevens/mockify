@@ -23,6 +23,12 @@ export type TestResult = {
   expected?: string;
   stdout?: string;
   stderr?: string;
+  /**
+   * Hidden tests only: the kind of error a runtime error raised ("IndexError",
+   * "java.lang.NullPointerException", "panic"), never its message, since a
+   * message could echo the hidden input back.
+   */
+  errorKind?: string;
 };
 
 export type CustomRunResult = {

@@ -41,6 +41,13 @@ export async function gradeAgainst(
   const results: TestResult[] = exec.map((r, i) => {
     const c = cases[i];
     const passed = r.status === "ok" && outputsMatch(r.stdout, c.output);
+    // Piston cuts stdout off at its PISTON_OUTPUT_MAX_SIZE (1024 chars by default).
+    // If even the correct answer is longer than what it kept, that's the runner's
+    // config, not the candidate's code, so say so instead of blaming them.
+    if (r.statusText === "Output Limit Exceeded" && c.output.length > r.stdout.length) {
+      warnOutputCap(c.output.length);
+      r = { ...r, statusText: "Output Limit Exceeded (code runner limit too low)" };
+    }
     const base: TestResult = {
       index: i,
       kind: c.kind,
@@ -50,7 +57,10 @@ export async function gradeAgainst(
       timeMs: r.timeMs,
       memoryKb: r.memoryKb,
     };
-    if (c.kind === "hidden") return base;
+    if (c.kind === "hidden") {
+      const kind = r.status === "runtime_error" ? errorKind(r.stderr) : null;
+      return kind ? { ...base, errorKind: kind } : base;
+    }
     return { ...base, input: c.input, expected: c.output, stdout: r.stdout, stderr: r.stderr };
   });
 
@@ -59,4 +69,34 @@ export async function gradeAgainst(
     results,
     summary: { passed: results.filter((r) => r.passed).length, total: results.length },
   };
+}
+
+/**
+ * The name of the error in a runtime error's stderr, without its message:
+ * "IndexError", "java.lang.ArrayIndexOutOfBoundsException", "panic"… Safe to
+ * show for hidden tests, where the full stderr could leak the hidden input.
+ */
+export function errorKind(stderr: string): string | null {
+  // Python prints the exception last (after the traceback); most others print it first.
+  const names = [...stderr.matchAll(/(?<![\w.$])((?:[A-Za-z_$][\w$]*\.)*[A-Z][\w$]*(?:Error|Exception|Exit|Interrupt|Overflow))\b/g)].map((m) => m[1]);
+  if (names.length) {
+    const py = /Traceback \(most recent call last\)/.test(stderr);
+    return (py ? names[names.length - 1] : names[0]).slice(0, 80);
+  }
+  if (/\bpanic(?:ked)?\b/.test(stderr)) return "panic";
+  if (/\bFatal error\b/.test(stderr)) return "Fatal error";
+  if (/\bSegmentation fault\b/i.test(stderr)) return "Segmentation fault";
+  if (/\bstack overflow\b/i.test(stderr)) return "Stack overflow";
+  if (/\babort(?:ed)?\b/i.test(stderr)) return "Aborted";
+  return null;
+}
+
+let warnedCap = false;
+function warnOutputCap(needed: number) {
+  if (warnedCap) return;
+  warnedCap = true;
+  console.warn(
+    `[grade] Piston cut off a test whose expected output is ${needed} chars. ` +
+      "Set PISTON_OUTPUT_MAX_SIZE=65536 on the Piston container (its default is 1024) and restart it.",
+  );
 }

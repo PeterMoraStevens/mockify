@@ -81,7 +81,6 @@ export function toPublic(p: Problem): PublicProblem {
     slug: p.slug,
     title: p.title,
     difficulty: p.difficulty,
-    tags: p.tags,
     license: p.license,
     source: p.source,
     description: p.description,
@@ -93,7 +92,7 @@ export function toPublic(p: Problem): PublicProblem {
 }
 
 export function toInterviewer(p: Problem): InterviewerProblem {
-  return { ...toPublic(p), interviewer: p.interviewer };
+  return { ...toPublic(p), tags: p.tags, interviewer: p.interviewer };
 }
 
 export function saveUploadedProblem(p: Problem) {

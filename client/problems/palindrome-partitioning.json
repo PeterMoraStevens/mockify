@@ -1,0 +1,100 @@
+{
+  "slug": "palindrome-partitioning",
+  "title": "Palindrome Partitioning",
+  "difficulty": "medium",
+  "tags": [
+    "backtracking",
+    "string"
+  ],
+  "license": "MIT",
+  "source": {
+    "name": "Mockify seed set"
+  },
+  "description": "Split `s` into pieces so that every piece reads the same forwards and backwards. Return every such split.\n\nOrder the splits by the length of their first piece (shortest first), then by the length of the second piece, and so on.\n\n### Input\n- Line 1: `s`, a string (the whole line).\n\n### Output\nOne line per inner array, its strings separated by spaces.\n\n### Constraints\n- `1 <= s.length <= 10`\n- `s` is lowercase English letters.",
+  "signature": {
+    "params": [
+      {
+        "name": "s",
+        "type": "string"
+      }
+    ],
+    "returns": "string[][]"
+  },
+  "examples": [
+    {
+      "input": "aab\n",
+      "output": "a a b\naa b\n"
+    },
+    {
+      "input": "a\n",
+      "output": "a\n"
+    }
+  ],
+  "tests": [
+    {
+      "input": "ab\n",
+      "output": "a b\n"
+    },
+    {
+      "input": "aaa\n",
+      "output": "a a a\na aa\naa a\naaa\n"
+    },
+    {
+      "input": "racecar\n",
+      "output": "r a c e c a r\nr a cec a r\nr aceca r\nracecar\n"
+    },
+    {
+      "input": "abba\n",
+      "output": "a b b a\na bb a\nabba\n"
+    },
+    {
+      "input": "aabbaa\n",
+      "output": "a a b b a a\na a b b aa\na a bb a a\na a bb aa\na abba a\naa b b a a\naa b b aa\naa bb a a\naa bb aa\naabbaa\n"
+    },
+    {
+      "input": "abcbad\n",
+      "output": "a b c b a d\na bcb a d\nabcba d\n"
+    },
+    {
+      "input": "aaaababb\n",
+      "output": "a a a a b a b b\na a a a b a bb\na a a a bab b\na a a aba b b\na a a aba bb\na a aa b a b b\na a aa b a bb\na a aa bab b\na aa a b a b b\na aa a b a bb\na aa a bab b\na aa aba b b\na aa aba bb\na aaa b a b b\na aaa b a bb\na aaa bab b\naa a a b a b b\naa a a b a bb\naa a a bab b\naa a aba b b\naa a aba bb\naa aa b a b b\naa aa b a bb\naa aa bab b\naaa a b a b b\naaa a b a bb\naaa a bab b\naaa aba b b\naaa aba bb\naaaa b a b b\naaaa b a bb\naaaa bab b\n"
+    },
+    {
+      "input": "abcdefghij\n",
+      "output": "a b c d e f g h i j\n"
+    }
+  ],
+  "starters": {
+    "python": "import sys\nfrom typing import List\n\n\ndef solve(s: str) -> List[List[str]]:\n    # Return every split of s into palindromes.\n    return []\n\n\ndef main() -> None:\n    lines = sys.stdin.read().split(\"\\n\")\n\n    def line(i: int) -> str:\n        return lines[i].rstrip(\"\\r\") if i < len(lines) else \"\"\n\n    s = line(0)\n    result = solve(s)\n    for row in result:\n        print(\" \".join(v for v in row))\n\n\nif __name__ == \"__main__\":\n    main()\n",
+    "javascript": "function solve(s) {\n  // Return every split of s into palindromes.\n  return [];\n}\n\nfunction readWords(s) {\n  return s.trim().split(/\\s+/).filter(Boolean);\n}\n\nfunction main() {\n  const lines = require(\"fs\").readFileSync(0, \"utf8\").split(\"\\n\");\n  const line = (i) => (lines[i] ?? \"\").replace(/\\r$/, \"\");\n  const s = line(0);\n  const result = solve(s);\n  console.log(result.map((row) => row.map((v) => String(v)).join(\" \")).join(\"\\n\"));\n}\n\nmain();\n",
+    "typescript": "/// <reference lib=\"es2022\" />\ndeclare const require: any;\n\nfunction solve(s: string): string[][] {\n  // Return every split of s into palindromes.\n  return [];\n}\n\nfunction readWords(s: string): string[] {\n  return s.trim().split(/\\s+/).filter(Boolean);\n}\n\nfunction main(): void {\n  const lines: string[] = require(\"fs\").readFileSync(0, \"utf8\").split(\"\\n\");\n  const line = (i: number): string => (lines[i] ?? \"\").replace(/\\r$/, \"\");\n  const s = line(0);\n  const result = solve(s);\n  console.log(result.map((row) => row.map((v) => String(v)).join(\" \")).join(\"\\n\"));\n}\n\nmain();\n",
+    "java": "import java.io.*;\nimport java.util.*;\n\npublic class Main {\n    static String[][] solve(String s) {\n        // Return every split of s into palindromes.\n        return new String[0][];\n    }\n\n    static class Tok {\n        final String[] t;\n        int i = 0;\n        Tok(String s) {\n            String x = s.trim();\n            t = x.isEmpty() ? new String[0] : x.split(\"\\\\s+\");\n        }\n        String next() { return i < t.length ? t[i++] : \"0\"; }\n        int left() { return t.length - i; }\n    }\n\n    static String line(List<String> lines, int i) {\n        return i < lines.size() ? lines.get(i) : \"\";\n    }\n\n    public static void main(String[] args) throws IOException {\n        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));\n        List<String> lines = new ArrayList<>();\n        for (String _l; (_l = br.readLine()) != null; ) lines.add(_l);\n        String s = line(lines, 0);\n        String[][] result = solve(s);\n        StringBuilder _sb = new StringBuilder();\n        for (int _r = 0; _r < result.length; _r++) {\n            if (_r > 0) _sb.append(\"\\n\");\n            for (int _i = 0; _i < result[_r].length; _i++) _sb.append(_i > 0 ? \" \" : \"\").append(result[_r][_i]);\n        }\n        System.out.println(_sb);\n    }\n}\n",
+    "c": "#include <stdbool.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\nchar*** solve(char* s, int* returnSize, int** returnColumnSizes) {\n    // Return every split of s into palindromes.\n    *returnSize = 0;\n    *returnColumnSizes = NULL;\n    return NULL;\n}\n\nstatic char* read_all(void) {\n    size_t cap = 1 << 16, len = 0;\n    char* buf = malloc(cap);\n    for (;;) {\n        if (len + 1 >= cap) buf = realloc(buf, cap *= 2);\n        size_t r = fread(buf + len, 1, cap - len - 1, stdin);\n        if (r == 0) break;\n        len += r;\n    }\n    buf[len] = '\\0';\n    return buf;\n}\n\nstatic char** g_lines;\nstatic int g_count;\n\nstatic char* line(int i) {\n    return i < g_count ? g_lines[i] : \"\";\n}\n\ntypedef struct {\n    char** t;\n    int n, i;\n} Tok;\n\n__attribute__((unused)) static Tok tok(const char* s) {\n    Tok k = {0};\n    char* copy = strdup(s);\n    int cap = 16;\n    k.t = malloc(cap * sizeof(char*));\n    for (char* w = strtok(copy, \" \\t\"); w; w = strtok(NULL, \" \\t\")) {\n        if (k.n == cap) k.t = realloc(k.t, (cap *= 2) * sizeof(char*));\n        k.t[k.n++] = w;\n    }\n    return k;\n}\n\n__attribute__((unused)) static char* tk_next(Tok* k) {\n    return k->i < k->n ? k->t[k->i++] : \"0\";\n}\n\nint main(void) {\n    char* input = read_all();\n    int cap = 8;\n    g_lines = malloc(cap * sizeof(char*));\n    for (char* p = input;;) {\n        if (g_count == cap) g_lines = realloc(g_lines, (cap *= 2) * sizeof(char*));\n        g_lines[g_count++] = p;\n        char* nl = strchr(p, '\\n');\n        size_t n = nl ? (size_t)(nl - p) : strlen(p);\n        if (n && p[n - 1] == '\\r') p[n - 1] = '\\0';\n        if (!nl) break;\n        *nl = '\\0';\n        p = nl + 1;\n    }\n    char* s = line(0);\n    int returnSize = 0;\n    int* returnColumnSizes = NULL;\n    char*** result = solve(s, &returnSize, &returnColumnSizes);\n    for (int r = 0; r < returnSize; r++) {\n        for (int i = 0; i < returnColumnSizes[r]; i++) printf(i ? \" %s\" : \"%s\", result[r][i] ? result[r][i] : \"\");\n        printf(\"\\n\");\n    }\n    return 0;\n}\n",
+    "cpp": "#include <algorithm>\n#include <climits>\n#include <iostream>\n#include <map>\n#include <numeric>\n#include <queue>\n#include <set>\n#include <sstream>\n#include <stack>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <vector>\nusing namespace std;\n\nvector<vector<string>> solve(string& s) {\n    // Return every split of s into palindromes.\n    return {};\n}\n\nstruct Tok {\n    vector<string> t;\n    size_t i = 0;\n    explicit Tok(const string& s) {\n        istringstream is(s);\n        for (string w; is >> w;) t.push_back(w);\n    }\n    string next() { return i < t.size() ? t[i++] : \"0\"; }\n};\n\nstatic vector<string> g_lines;\nstatic string line(size_t i) { return i < g_lines.size() ? g_lines[i] : string(); }\n\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n    for (string l; getline(cin, l);) {\n        if (!l.empty() && l.back() == '\\r') l.pop_back();\n        g_lines.push_back(l);\n    }\n    string s = line(0);\n    vector<vector<string>> result = solve(s);\n    for (auto& row : result) {\n        for (size_t i = 0; i < row.size(); i++) cout << (i ? \" \" : \"\") << row[i];\n        cout << \"\\n\";\n    }\n    return 0;\n}\n",
+    "csharp": "using System;\nusing System.Collections.Generic;\nusing System.Linq;\n\npublic class Program {\n    static string[][] Solve(string s) {\n        // Return every split of s into palindromes.\n        return new string[0][];\n    }\n\n    class Tok {\n        readonly string[] t;\n        int i;\n        public Tok(string s) { t = s.Split(new[] { ' ', '\\t' }, StringSplitOptions.RemoveEmptyEntries); }\n        public string Next() => i < t.Length ? t[i++] : \"0\";\n        public int Left => t.Length - i;\n    }\n\n    static string[] lines = new string[0];\n    static string Line(int i) => i < lines.Length ? lines[i] : \"\";\n\n    public static void Main() {\n        lines = Console.In.ReadToEnd().Split('\\n').Select(_l => _l.TrimEnd('\\r')).ToArray();\n        string s = Line(0);\n        var result = Solve(s);\n        Console.WriteLine(string.Join(\"\\n\", result.Select(_row => string.Join(\" \", _row.Select(_v => _v.ToString())))));\n    }\n}\n",
+    "go": "package main\n\nimport (\n\t\"fmt\"\n\t\"io\"\n\t\"os\"\n\t\"strings\"\n)\n\nfunc solve(s string) [][]string {\n\t// Return every split of s into palindromes.\n\treturn [][]string{}\n}\n\nfunc main() {\n\tdata, _ := io.ReadAll(os.Stdin)\n\tlines := strings.Split(strings.ReplaceAll(string(data), \"\\r\", \"\"), \"\\n\")\n\tline := func(i int) string {\n\t\tif i < len(lines) {\n\t\t\treturn lines[i]\n\t\t}\n\t\treturn \"\"\n\t}\n\ts := line(0)\n\tresult := solve(s)\n\trows := make([]string, len(result))\n\tfor r, row := range result {\n\t\tparts := make([]string, len(row))\n\t\tfor i, v := range row {\n\t\t\tparts[i] = fmt.Sprint(v)\n\t\t}\n\t\trows[r] = strings.Join(parts, \" \")\n\t}\n\tfmt.Println(strings.Join(rows, \"\\n\"))\n}\n",
+    "rust": "#![allow(unused_imports, unused_variables, unused_mut, dead_code)]\nuse std::collections::{HashMap, HashSet, VecDeque};\nuse std::io::{self, Read};\n\nfn solve(s: String) -> Vec<Vec<String>> {\n    // Return every split of s into palindromes.\n    vec![]\n}\n\nfn line<'a>(lines: &[&'a str], i: usize) -> &'a str {\n    lines.get(i).copied().unwrap_or(\"\")\n}\n\nfn main() {\n    let mut input = String::new();\n    io::stdin().read_to_string(&mut input).unwrap();\n    let lines: Vec<&str> = input.split('\\n').map(|l| l.trim_end_matches('\\r')).collect();\n    let s: String = line(&lines, 0).to_string();\n    let result = solve(s);\n    let rows: Vec<String> = result\n        .iter()\n        .map(|row| row.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(\" \"))\n        .collect();\n    println!(\"{}\", rows.join(\"\\n\"));\n}\n",
+    "kotlin": "fun solve(s: String): Array<Array<String>> {\n    // Return every split of s into palindromes.\n    return arrayOf<Array<String>>()\n}\n\nclass Tok(s: String) {\n    private val t = s.trim().split(Regex(\"\\\\s+\")).filter { it.isNotEmpty() }\n    private var i = 0\n    fun next(): String = if (i < t.size) t[i++] else \"0\"\n    fun left(): Int = t.size - i\n}\n\nfun main() {\n    val lines = generateSequence(::readLine).map { it.trimEnd('\\r') }.toList()\n    fun line(i: Int): String = lines.getOrElse(i) { \"\" }\n    val s = line(0)\n    val result = solve(s)\n    println(result.joinToString(\"\\n\") { it.joinToString(\" \") })\n}\n",
+    "swift": "import Foundation\n\nfunc solve(_ s: String) -> [[String]] {\n    // Return every split of s into palindromes.\n    return []\n}\n\nfinal class Tok {\n    let t: [String]\n    var i = 0\n    init(_ s: String) { t = s.split(whereSeparator: { $0 == \" \" || $0 == \"\\t\" }).map(String.init) }\n    func next() -> String {\n        if i < t.count { i += 1; return t[i - 1] }\n        return \"0\"\n    }\n    var left: Int { t.count - i }\n}\n\nvar lines: [String] = []\nwhile let l = readLine() { lines.append(l) }\nfunc line(_ i: Int) -> String { i < lines.count ? lines[i] : \"\" }\n\nlet s: String = line(0)\nlet result = solve(s)\nprint(result.map { row in row.map { String($0) }.joined(separator: \" \") }.joined(separator: \"\\n\"))\n",
+    "ruby": "def solve(s)\n  # Return every split of s into palindromes.\n  []\nend\n\ndef line(lines, i)\n  (lines[i] || \"\").chomp\nend\n\nlines = STDIN.read.split(\"\\n\", -1)\ns = line(lines, 0)\nresult = solve(s)\nputs result.map { |row| row.map { |v| v.to_s }.join(\" \") }.join(\"\\n\")\n",
+    "php": "<?php\n\nfunction solve(string $s): array {\n    // Return every split of s into palindromes.\n    return [];\n}\n\nfunction line(array $lines, int $i): string {\n    return rtrim($lines[$i] ?? \"\", \"\\r\");\n}\n\nfunction readWords(string $s): array {\n    return preg_split('/\\s+/', trim($s), -1, PREG_SPLIT_NO_EMPTY);\n}\n\n$lines = explode(\"\\n\", stream_get_contents(STDIN));\n$s = line($lines, 0);\n$result = solve($s);\necho implode(\"\\n\", array_map(fn($row) => implode(\" \", array_map(fn($v) => $v, $row)), $result)), \"\\n\";\n",
+    "scala": "import scala.collection.mutable\n\nclass Tok(s: String) {\n  private val t = s.trim.split(\"\\\\s+\").filter(_.nonEmpty)\n  private var i = 0\n  def next(): String = if (i < t.length) { i += 1; t(i - 1) } else \"0\"\n  def left: Int = t.length - i\n}\n\nobject Main {\n  def solve(s: String): Array[Array[String]] = {\n    // Return every split of s into palindromes.\n    Array.empty[Array[String]]\n  }\n\n  def main(args: Array[String]): Unit = {\n    val lines = scala.io.Source.stdin.getLines().toArray\n    def line(i: Int): String = if (i < lines.length) lines(i).stripSuffix(\"\\r\") else \"\"\n    val s = line(0)\n    val result = solve(s)\n    println(result.map(_.mkString(\" \")).mkString(\"\\n\"))\n  }\n}\n",
+    "dart": "import 'dart:io';\n\nList<List<String>> solve(String s) {\n  // Return every split of s into palindromes.\n  return <List<String>>[];\n}\n\nclass Tok {\n  final List<String> t;\n  int i = 0;\n  Tok(String s) : t = s.trim().split(RegExp(r'\\s+')).where((w) => w.isNotEmpty).toList();\n  String next() => i < t.length ? t[i++] : '0';\n  int get left => t.length - i;\n}\n\nvoid main() {\n  final lines = <String>[];\n  while (true) {\n    final l = stdin.readLineSync();\n    if (l == null) break;\n    lines.add(l);\n  }\n  String line(int i) => i < lines.length ? lines[i] : '';\n  final String s = line(0);\n  final result = solve(s);\n  print(result.map((row) => row.join(' ')).join('\\n'));\n}\n"
+  },
+  "interviewer": {
+    "hints": [
+      "Try every palindromic first piece, then split the rest the same way."
+    ],
+    "followUps": [
+      "Precompute which substrings are palindromes so each check is O(1)."
+    ],
+    "expectedComplexity": {
+      "time": "O(n · 2^n)",
+      "space": "O(n)"
+    }
+  },
+  "reference": {
+    "language": "python",
+    "code": "import bisect\nimport heapq\nimport math\nfrom collections import Counter, defaultdict, deque\nimport sys\nfrom typing import List\n\n\ndef solve(s: str) -> List[List[str]]:\n    # Return every split of s into palindromes.\n    out = []\n    def go(i, cur):\n        if i == len(s):\n            out.append(cur[:])\n            return\n        for j in range(i + 1, len(s) + 1):\n            piece = s[i:j]\n            if piece == piece[::-1]:\n                cur.append(piece)\n                go(j, cur)\n                cur.pop()\n    go(0, [])\n    return out\n\n\ndef main() -> None:\n    lines = sys.stdin.read().split(\"\\n\")\n\n    def line(i: int) -> str:\n        return lines[i].rstrip(\"\\r\") if i < len(lines) else \"\"\n\n    s = line(0)\n    result = solve(s)\n    for row in result:\n        print(\" \".join(v for v in row))\n\n\nif __name__ == \"__main__\":\n    main()\n"
+  }
+}

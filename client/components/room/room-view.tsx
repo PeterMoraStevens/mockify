@@ -13,7 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs } from "@/components/ui/tabs";
 import { LANGUAGE_IDS, LANGUAGES, SCRATCH_STARTERS, isLanguageId, type LanguageId } from "@/lib/languages";
+import { applyNodeMode, nodeBlockLines, nodeKinds, type NodeMode } from "@/lib/problems/nodes";
 import type { InterviewerProblem, ProblemSummary, PublicProblem } from "@/lib/problems/schema";
+import { foldEntry, getFolds } from "@/lib/room/shared-folds";
 import type { EditorView } from "@codemirror/view";
 import { RoomConnection, type ConnSnapshot } from "@/lib/room/connection";
 import { useMediaQuery, useNow, useRemotePresence, useY } from "@/lib/room/hooks";
@@ -381,12 +383,18 @@ export function RoomView({
   // Keep showing the last problem while the interviewer view loads after a role swap.
   const problem =
     fetched && session.problemSlug && fetched.key.startsWith(`${session.problemSlug}:`) ? fetched.problem : null;
+  // Only the interviewer picks, and the list carries tags, so the candidate's browser never loads it.
   useEffect(() => {
+    if (!isInterviewer) return;
+    let cancelled = false;
     fetch("/api/problems")
       .then((r) => r.json())
-      .then((b) => setProblems(b.problems ?? []))
+      .then((b) => !cancelled && setProblems(b.problems ?? []))
       .catch(() => {});
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [isInterviewer]);
 
   useEffect(() => {
     if (!problemKey) return;
@@ -405,9 +413,15 @@ export function RoomView({
     ? (Object.keys(problem.starters).filter(isLanguageId) as LanguageId[])
     : [...LANGUAGE_IDS];
 
+  // List/tree problems: starters are stored with the node classes written
+  // out; the shared "Node classes" choice can swap them for instructions.
+  const hasNodes = !!problem?.signature && nodeKinds(problem.signature).length > 0;
   const starterFor = useCallback(
-    (lang: LanguageId, p: AnyProblem | null = problem) => p?.starters[lang] ?? SCRATCH_STARTERS[lang],
-    [problem],
+    (lang: LanguageId, p: AnyProblem | PublicProblem | null = problem, mode: NodeMode = session.nodeMode) => {
+      const base = p?.starters[lang] ?? SCRATCH_STARTERS[lang];
+      return p?.signature ? (applyNodeMode(base, lang, p.signature, mode) ?? base) : base;
+    },
+    [problem, session.nodeMode],
   );
 
   const pickProblem = async (slug: string | null) => {
@@ -431,7 +445,7 @@ export function RoomView({
       const s = getSession(doc);
       s.set("problemSlug", slug);
       s.set("language", lang);
-      replaceCode(doc, p.starters[lang] ?? SCRATCH_STARTERS[lang]);
+      replaceCode(doc, starterFor(lang, p));
       getRun(doc).delete("tests");
       getRun(doc).delete("custom");
     });
@@ -447,6 +461,38 @@ export function RoomView({
       if (untouched) replaceCode(doc, starterFor(lang));
     });
     if (!untouched) toast.info(`Kept your code. Use Reset to load the ${LANGUAGES[lang].label} starter.`);
+  };
+
+  /**
+   * Switch between provided node classes and writing your own. Only the
+   * marked section of the code changes, so anything typed elsewhere stays.
+   */
+  const changeNodeMode = (mode: NodeMode) => {
+    if (mode === session.nodeMode || !problem?.signature) return;
+    const ytext = getCode(doc);
+    const code = ytext.toString();
+    const next = code.trim() === "" ? starterFor(session.language, problem, mode) : applyNodeMode(code, session.language, problem.signature, mode);
+    doc.transact(() => {
+      getSession(doc).set("nodeMode", mode);
+      if (next === null || next === code) return;
+      // Splice just the part that differs, so cursors and other folds stay put.
+      let a = 0;
+      while (a < code.length && a < next.length && code[a] === next[a]) a++;
+      let b = 0;
+      while (b < code.length - a && b < next.length - a && code[code.length - 1 - b] === next[next.length - 1 - b]) b++;
+      ytext.delete(a, code.length - a - b);
+      ytext.insert(a, next.slice(a, next.length - b));
+      // Ready-made classes start folded, like on a fresh starter.
+      const block = mode === "provided" ? nodeBlockLines(next.split("\n")) : null;
+      if (block) {
+        const lines = next.split("\n");
+        const endOf = (i: number) => lines.slice(0, i + 1).join("\n").length;
+        getFolds(doc).set(`nodes-${crypto.randomUUID()}`, foldEntry(ytext, { from: endOf(block.begin), to: endOf(block.end) }));
+      }
+    });
+    if (next === null) {
+      toast.error("Couldn't find the node classes section (its marker comments were removed). Reset the code to apply this.");
+    }
   };
 
   const [confirmReset, setConfirmReset] = useState(false);
@@ -714,6 +760,20 @@ export function RoomView({
           ))}
         </SelectContent>
       </Select>
+      {hasNodes && (
+        <Select value={session.nodeMode} onValueChange={(v) => changeNodeMode(v === "provided" ? "provided" : "scratch")}>
+          <SelectTrigger
+            className="h-8 w-52 bg-secondary-background text-foreground shadow-shadow"
+            title="Write the ListNode/TreeNode classes yourself, or start with them provided"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-100">
+            <SelectItem value="scratch">Node classes: write your own</SelectItem>
+            <SelectItem value="provided">Node classes: provided</SelectItem>
+          </SelectContent>
+        </Select>
+      )}
       <Button size="sm" variant="neutral" className="h-8" onClick={resetCode} title="Replace the code with the starter">
         <RotateCcw /> {confirmReset ? "Sure?" : "Reset"}
       </Button>

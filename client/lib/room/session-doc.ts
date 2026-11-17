@@ -3,6 +3,7 @@
 import * as Y from "yjs";
 import { Awareness } from "y-protocols/awareness";
 import type { LanguageId } from "@/lib/languages";
+import type { NodeMode } from "@/lib/problems/nodes";
 import type { RunMode, RunResponse } from "@/lib/run-types";
 import { defaultFoldRanges } from "./default-folds";
 import { foldEntry, getFolds } from "./shared-folds";
@@ -12,7 +13,7 @@ import { foldEntry, getFolds } from "./shared-folds";
  * between browsers over the WebRTC data channel.
  *
  *   code      Y.Text   the editor
- *   session   Y.Map    problem slug, language, which slot is interviewing
+ *   session   Y.Map    problem slug, language, node-class mode, which slot is interviewing
  *   timer     Y.Map    shared countdown
  *   run       Y.Map    latest test run and latest custom run (kept separately) + who is running
  *   wb        Y.Map    whiteboard elements keyed by element id
@@ -93,6 +94,12 @@ export function readSession(doc: Y.Doc) {
     mode: ((m) => (m === "coding" || m === "design" ? m : null))(s.get("mode")) as "coding" | "design" | null,
     /** Room deadline after an extension, so the other person sees it immediately. */
     expiresAt: (s.get("expiresAt") as number | undefined) ?? null,
+    /**
+     * For list/tree problems: whether the starter includes ready-made node
+     * classes or asks you to write them. Writing them is the default, as in
+     * most interviews.
+     */
+    nodeMode: (s.get("nodeMode") === "provided" ? "provided" : "scratch") as NodeMode,
   };
 }
 

@@ -1,0 +1,106 @@
+{
+  "slug": "two-sum-sorted",
+  "title": "Two Sum II (Sorted Input)",
+  "difficulty": "medium",
+  "tags": [
+    "two-pointers",
+    "array"
+  ],
+  "license": "MIT",
+  "source": {
+    "name": "Mockify seed set"
+  },
+  "description": "`numbers` is sorted in non-decreasing order. Exactly one pair of different positions `i < j` has `numbers[i] + numbers[j] == target`.\n\nReturn `[i + 1, j + 1]` (1-indexed). Aim for O(1) extra space.\n\n### Input\n- Line 1: `numbers`, space-separated integers.\n- Line 2: `target`, an integer.\n\n### Output\nThe integers on one line, separated by spaces.\n\n### Constraints\n- `2 <= numbers.length <= 3 * 10^4`\n- `-1000 <= numbers[i] <= 1000`\n- Exactly one answer exists.",
+  "signature": {
+    "params": [
+      {
+        "name": "numbers",
+        "type": "int[]"
+      },
+      {
+        "name": "target",
+        "type": "int"
+      }
+    ],
+    "returns": "int[]"
+  },
+  "examples": [
+    {
+      "input": "2 7 11 15\n9\n",
+      "output": "1 2\n",
+      "explanation": "2 + 7 = 9, at positions 1 and 2."
+    },
+    {
+      "input": "-1 0\n-1\n",
+      "output": "1 2\n"
+    }
+  ],
+  "tests": [
+    {
+      "input": "1 2\n3\n",
+      "output": "1 2\n"
+    },
+    {
+      "input": "0 0 3 4\n0\n",
+      "output": "1 2\n"
+    },
+    {
+      "input": "1 3 4 4\n8\n",
+      "output": "3 4\n"
+    },
+    {
+      "input": "-3 -1 0 2 5\n-4\n",
+      "output": "1 2\n"
+    },
+    {
+      "input": "-47 -32 -23 -8 20 30 33 38 44 48\n77\n",
+      "output": "7 9\n"
+    },
+    {
+      "input": "-938 -863 -844 -790 -718 -654 -641 -633 -617 -535 -408 -377 -318 -290 -240 -132 -108 -28 82 135 182 195 202 285 300 314 327 370 375 446 551 573 619 667 728 733 832 855 935 962\n1581\n",
+      "output": "33 40\n"
+    },
+    {
+      "input": "-999 -993 -981 -947 -932 -931 -921 -918 -881 -875 -873 -872 -868 -862 -852 -849 -832 -821 -802 -800 -774 -765 -762 -761 -757 -720 -707 -705 -692 -673 -665 -661 -658 -656 -642 -638 -634 -618 -610 -588 -566 -562 -557 -553 -551 -550 -548 -510 -507 -504 -481 -472 -452 -443 -411 -404 -397 -388 -384 -383 -381 -379 -336 -333 -332 -323 -301 -277 -256 -236 -224 -221 -204 -201 -194 -173 -171 -162 -160 -147 -141 -128 -122 -106 -100 -85 -82 -64 -63 -61 -49 -48 -41 -3 1 14 18 20 24 28 29 45 71 81 98 110 117 127 136 137 157 167 173 182 185 192 193 212 229 238 239 242 252 254 257 258 270 288 296 317 339 343 372 378 379 390 393 407 418 438 447 450 462 469 479 483 497 499 502 504 531 534 536 549 569 588 599 605 607 610 620 623 631 648 681 704 708 718 725 728 740 746 748 751 756 759 773 779 796 797 798 819 848 851 860 863 866 870 891 896 903 916 934 958 960 962 969 990 995 997\n1896\n",
+      "output": "193 196\n"
+    },
+    {
+      "input": "-977 -780 -642 -530 -298 223\n-754\n",
+      "output": "1 6\n"
+    }
+  ],
+  "starters": {
+    "python": "import sys\nfrom typing import List\n\n\ndef solve(numbers: List[int], target: int) -> List[int]:\n    # Return the 1-indexed positions of the two numbers that add up to target.\n    return []\n\n\ndef main() -> None:\n    lines = sys.stdin.read().split(\"\\n\")\n\n    def line(i: int) -> str:\n        return lines[i].rstrip(\"\\r\") if i < len(lines) else \"\"\n\n    numbers = [int(x) for x in line(0).split()]\n    target = int(line(1).strip())\n    result = solve(numbers, target)\n    print(\" \".join(str(v) for v in result))\n\n\nif __name__ == \"__main__\":\n    main()\n",
+    "javascript": "function solve(numbers, target) {\n  // Return the 1-indexed positions of the two numbers that add up to target.\n  return [];\n}\n\nfunction readWords(s) {\n  return s.trim().split(/\\s+/).filter(Boolean);\n}\n\nfunction main() {\n  const lines = require(\"fs\").readFileSync(0, \"utf8\").split(\"\\n\");\n  const line = (i) => (lines[i] ?? \"\").replace(/\\r$/, \"\");\n  const numbers = readWords(line(0)).map((x) => Number(x));\n  const target = Number(line(1).trim());\n  const result = solve(numbers, target);\n  console.log(result.map((v) => String(v)).join(\" \"));\n}\n\nmain();\n",
+    "typescript": "/// <reference lib=\"es2022\" />\ndeclare const require: any;\n\nfunction solve(numbers: number[], target: number): number[] {\n  // Return the 1-indexed positions of the two numbers that add up to target.\n  return [];\n}\n\nfunction readWords(s: string): string[] {\n  return s.trim().split(/\\s+/).filter(Boolean);\n}\n\nfunction main(): void {\n  const lines: string[] = require(\"fs\").readFileSync(0, \"utf8\").split(\"\\n\");\n  const line = (i: number): string => (lines[i] ?? \"\").replace(/\\r$/, \"\");\n  const numbers = readWords(line(0)).map((x) => Number(x));\n  const target = Number(line(1).trim());\n  const result = solve(numbers, target);\n  console.log(result.map((v) => String(v)).join(\" \"));\n}\n\nmain();\n",
+    "java": "import java.io.*;\nimport java.util.*;\n\npublic class Main {\n    static int[] solve(int[] numbers, int target) {\n        // Return the 1-indexed positions of the two numbers that add up to target.\n        return new int[0];\n    }\n\n    static class Tok {\n        final String[] t;\n        int i = 0;\n        Tok(String s) {\n            String x = s.trim();\n            t = x.isEmpty() ? new String[0] : x.split(\"\\\\s+\");\n        }\n        String next() { return i < t.length ? t[i++] : \"0\"; }\n        int left() { return t.length - i; }\n    }\n\n    static String line(List<String> lines, int i) {\n        return i < lines.size() ? lines.get(i) : \"\";\n    }\n\n    static int[] readAllInt(Tok tk) {\n        int[] res = new int[tk.left()];\n        for (int i = 0; i < res.length; i++) res[i] = Integer.parseInt(tk.next());\n        return res;\n    }\n\n    public static void main(String[] args) throws IOException {\n        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));\n        List<String> lines = new ArrayList<>();\n        for (String _l; (_l = br.readLine()) != null; ) lines.add(_l);\n        int[] numbers = readAllInt(new Tok(line(lines, 0)));\n        int target = Integer.parseInt(line(lines, 1).trim());\n        int[] result = solve(numbers, target);\n        StringBuilder _sb = new StringBuilder();\n        for (int _i = 0; _i < result.length; _i++) _sb.append(_i > 0 ? \" \" : \"\").append(result[_i]);\n        System.out.println(_sb);\n    }\n}\n",
+    "c": "#include <stdbool.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\nint* solve(int* numbers, int numbersSize, int target, int* returnSize) {\n    // Return the 1-indexed positions of the two numbers that add up to target.\n    *returnSize = 0;\n    return NULL;\n}\n\nstatic char* read_all(void) {\n    size_t cap = 1 << 16, len = 0;\n    char* buf = malloc(cap);\n    for (;;) {\n        if (len + 1 >= cap) buf = realloc(buf, cap *= 2);\n        size_t r = fread(buf + len, 1, cap - len - 1, stdin);\n        if (r == 0) break;\n        len += r;\n    }\n    buf[len] = '\\0';\n    return buf;\n}\n\nstatic char** g_lines;\nstatic int g_count;\n\nstatic char* line(int i) {\n    return i < g_count ? g_lines[i] : \"\";\n}\n\ntypedef struct {\n    char** t;\n    int n, i;\n} Tok;\n\n__attribute__((unused)) static Tok tok(const char* s) {\n    Tok k = {0};\n    char* copy = strdup(s);\n    int cap = 16;\n    k.t = malloc(cap * sizeof(char*));\n    for (char* w = strtok(copy, \" \\t\"); w; w = strtok(NULL, \" \\t\")) {\n        if (k.n == cap) k.t = realloc(k.t, (cap *= 2) * sizeof(char*));\n        k.t[k.n++] = w;\n    }\n    return k;\n}\n\n__attribute__((unused)) static char* tk_next(Tok* k) {\n    return k->i < k->n ? k->t[k->i++] : \"0\";\n}\n\nint main(void) {\n    char* input = read_all();\n    int cap = 8;\n    g_lines = malloc(cap * sizeof(char*));\n    for (char* p = input;;) {\n        if (g_count == cap) g_lines = realloc(g_lines, (cap *= 2) * sizeof(char*));\n        g_lines[g_count++] = p;\n        char* nl = strchr(p, '\\n');\n        size_t n = nl ? (size_t)(nl - p) : strlen(p);\n        if (n && p[n - 1] == '\\r') p[n - 1] = '\\0';\n        if (!nl) break;\n        *nl = '\\0';\n        p = nl + 1;\n    }\n    Tok k0 = tok(line(0));\n    int numbersSize = k0.n;\n    int* numbers = malloc((numbersSize + 1) * sizeof(int));\n    for (int j = 0; j < numbersSize; j++) numbers[j] = (int)strtol(k0.t[j], NULL, 10);\n    Tok k1 = tok(line(1));\n    int target = (int)strtol(tk_next(&k1), NULL, 10);\n    int returnSize = 0;\n    int* result = solve(numbers, numbersSize, target, &returnSize);\n    for (int i = 0; i < returnSize; i++) printf(i ? \" %d\" : \"%d\", result[i]);\n    printf(\"\\n\");\n    return 0;\n}\n",
+    "cpp": "#include <algorithm>\n#include <climits>\n#include <iostream>\n#include <map>\n#include <numeric>\n#include <queue>\n#include <set>\n#include <sstream>\n#include <stack>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <vector>\nusing namespace std;\n\nvector<int> solve(vector<int>& numbers, int target) {\n    // Return the 1-indexed positions of the two numbers that add up to target.\n    return {};\n}\n\nstruct Tok {\n    vector<string> t;\n    size_t i = 0;\n    explicit Tok(const string& s) {\n        istringstream is(s);\n        for (string w; is >> w;) t.push_back(w);\n    }\n    string next() { return i < t.size() ? t[i++] : \"0\"; }\n};\n\nstatic vector<string> g_lines;\nstatic string line(size_t i) { return i < g_lines.size() ? g_lines[i] : string(); }\n\nstatic vector<int> readAllInt(Tok tk) {\n    vector<int> res;\n    while (tk.i < tk.t.size()) res.push_back(stoi(tk.next()));\n    return res;\n}\n\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n    for (string l; getline(cin, l);) {\n        if (!l.empty() && l.back() == '\\r') l.pop_back();\n        g_lines.push_back(l);\n    }\n    vector<int> numbers = readAllInt(Tok(line(0)));\n    int target = stoi(Tok(line(1)).next());\n    vector<int> result = solve(numbers, target);\n    for (size_t i = 0; i < result.size(); i++) cout << (i ? \" \" : \"\") << result[i];\n    cout << \"\\n\";\n    return 0;\n}\n",
+    "csharp": "using System;\nusing System.Collections.Generic;\nusing System.Linq;\n\npublic class Program {\n    static int[] Solve(int[] numbers, int target) {\n        // Return the 1-indexed positions of the two numbers that add up to target.\n        return new int[0];\n    }\n\n    class Tok {\n        readonly string[] t;\n        int i;\n        public Tok(string s) { t = s.Split(new[] { ' ', '\\t' }, StringSplitOptions.RemoveEmptyEntries); }\n        public string Next() => i < t.Length ? t[i++] : \"0\";\n        public int Left => t.Length - i;\n    }\n\n    static string[] lines = new string[0];\n    static string Line(int i) => i < lines.Length ? lines[i] : \"\";\n\n    static int[] ReadAllInt(Tok tk) {\n        var res = new int[tk.Left];\n        for (int i = 0; i < res.Length; i++) res[i] = int.Parse(tk.Next());\n        return res;\n    }\n\n    public static void Main() {\n        lines = Console.In.ReadToEnd().Split('\\n').Select(_l => _l.TrimEnd('\\r')).ToArray();\n        int[] numbers = ReadAllInt(new Tok(Line(0)));\n        int target = int.Parse(Line(1).Trim());\n        var result = Solve(numbers, target);\n        Console.WriteLine(string.Join(\" \", result.Select(_v => _v.ToString())));\n    }\n}\n",
+    "go": "package main\n\nimport (\n\t\"fmt\"\n\t\"io\"\n\t\"os\"\n\t\"strconv\"\n\t\"strings\"\n)\n\nfunc solve(numbers []int, target int) []int {\n\t// Return the 1-indexed positions of the two numbers that add up to target.\n\treturn []int{}\n}\n\nfunc atoi(s string) int {\n\tv, _ := strconv.Atoi(strings.TrimSpace(s))\n\treturn v\n}\n\nfunc readAllInt(s string) []int {\n\tf := strings.Fields(s)\n\tres := make([]int, len(f))\n\tfor i, w := range f {\n\t\tres[i] = atoi(w)\n\t}\n\treturn res\n}\n\nfunc main() {\n\tdata, _ := io.ReadAll(os.Stdin)\n\tlines := strings.Split(strings.ReplaceAll(string(data), \"\\r\", \"\"), \"\\n\")\n\tline := func(i int) string {\n\t\tif i < len(lines) {\n\t\t\treturn lines[i]\n\t\t}\n\t\treturn \"\"\n\t}\n\tnumbers := readAllInt(line(0))\n\ttarget := atoi(strings.TrimSpace(line(1)))\n\tresult := solve(numbers, target)\n\tparts := make([]string, len(result))\n\tfor i, v := range result {\n\t\tparts[i] = fmt.Sprint(v)\n\t}\n\tfmt.Println(strings.Join(parts, \" \"))\n}\n",
+    "rust": "#![allow(unused_imports, unused_variables, unused_mut, dead_code)]\nuse std::collections::{HashMap, HashSet, VecDeque};\nuse std::io::{self, Read};\n\nfn solve(numbers: Vec<i32>, target: i32) -> Vec<i32> {\n    // Return the 1-indexed positions of the two numbers that add up to target.\n    vec![]\n}\n\nfn line<'a>(lines: &[&'a str], i: usize) -> &'a str {\n    lines.get(i).copied().unwrap_or(\"\")\n}\n\nfn main() {\n    let mut input = String::new();\n    io::stdin().read_to_string(&mut input).unwrap();\n    let lines: Vec<&str> = input.split('\\n').map(|l| l.trim_end_matches('\\r')).collect();\n    let numbers: Vec<i32> = line(&lines, 0).split_whitespace().map(|x| x.parse::<i32>().unwrap()).collect();\n    let target: i32 = line(&lines, 1).trim().parse::<i32>().unwrap();\n    let result = solve(numbers, target);\n    let parts: Vec<String> = result.iter().map(|v| v.to_string()).collect();\n    println!(\"{}\", parts.join(\" \"));\n}\n",
+    "kotlin": "fun solve(numbers: IntArray, target: Int): IntArray {\n    // Return the 1-indexed positions of the two numbers that add up to target.\n    return intArrayOf()\n}\n\nclass Tok(s: String) {\n    private val t = s.trim().split(Regex(\"\\\\s+\")).filter { it.isNotEmpty() }\n    private var i = 0\n    fun next(): String = if (i < t.size) t[i++] else \"0\"\n    fun left(): Int = t.size - i\n}\n\nfun readAllInt(tk: Tok): IntArray = IntArray(tk.left()) { tk.next().toInt() }\n\nfun main() {\n    val lines = generateSequence(::readLine).map { it.trimEnd('\\r') }.toList()\n    fun line(i: Int): String = lines.getOrElse(i) { \"\" }\n    val numbers = readAllInt(Tok(line(0)))\n    val target = line(1).trim().toInt()\n    val result = solve(numbers, target)\n    println(result.joinToString(\" \"))\n}\n",
+    "swift": "import Foundation\n\nfunc solve(_ numbers: [Int], _ target: Int) -> [Int] {\n    // Return the 1-indexed positions of the two numbers that add up to target.\n    return []\n}\n\nfinal class Tok {\n    let t: [String]\n    var i = 0\n    init(_ s: String) { t = s.split(whereSeparator: { $0 == \" \" || $0 == \"\\t\" }).map(String.init) }\n    func next() -> String {\n        if i < t.count { i += 1; return t[i - 1] }\n        return \"0\"\n    }\n    var left: Int { t.count - i }\n}\n\nfunc readAllInt(_ tk: Tok) -> [Int] {\n    var res: [Int] = []\n    while tk.left > 0 { res.append(Int(tk.next())!) }\n    return res\n}\n\nvar lines: [String] = []\nwhile let l = readLine() { lines.append(l) }\nfunc line(_ i: Int) -> String { i < lines.count ? lines[i] : \"\" }\n\nlet numbers: [Int] = readAllInt(Tok(line(0)))\nlet target: Int = Int(line(1).trimmingCharacters(in: .whitespaces))!\nlet result = solve(numbers, target)\nprint(result.map { String($0) }.joined(separator: \" \"))\n",
+    "ruby": "def solve(numbers, target)\n  # Return the 1-indexed positions of the two numbers that add up to target.\n  []\nend\n\ndef line(lines, i)\n  (lines[i] || \"\").chomp\nend\n\nlines = STDIN.read.split(\"\\n\", -1)\nnumbers = line(lines, 0).split.map { |x| x.to_i }\ntarget = line(lines, 1).strip.to_i\nresult = solve(numbers, target)\nputs result.map { |v| v.to_s }.join(\" \")\n",
+    "php": "<?php\n\nfunction solve(array $numbers, int $target): array {\n    // Return the 1-indexed positions of the two numbers that add up to target.\n    return [];\n}\n\nfunction line(array $lines, int $i): string {\n    return rtrim($lines[$i] ?? \"\", \"\\r\");\n}\n\nfunction readWords(string $s): array {\n    return preg_split('/\\s+/', trim($s), -1, PREG_SPLIT_NO_EMPTY);\n}\n\n$lines = explode(\"\\n\", stream_get_contents(STDIN));\n$numbers = array_map(fn($x) => intval($x), readWords(line($lines, 0)));\n$target = intval(trim(line($lines, 1)));\n$result = solve($numbers, $target);\necho implode(\" \", array_map(fn($v) => $v, $result)), \"\\n\";\n",
+    "scala": "import scala.collection.mutable\n\nclass Tok(s: String) {\n  private val t = s.trim.split(\"\\\\s+\").filter(_.nonEmpty)\n  private var i = 0\n  def next(): String = if (i < t.length) { i += 1; t(i - 1) } else \"0\"\n  def left: Int = t.length - i\n}\n\nobject Main {\n  def solve(numbers: Array[Int], target: Int): Array[Int] = {\n    // Return the 1-indexed positions of the two numbers that add up to target.\n    Array.empty[Int]\n  }\n\n  def readAllInt(tk: Tok): Array[Int] = Array.fill(tk.left)(tk.next().toInt)\n\n  def main(args: Array[String]): Unit = {\n    val lines = scala.io.Source.stdin.getLines().toArray\n    def line(i: Int): String = if (i < lines.length) lines(i).stripSuffix(\"\\r\") else \"\"\n    val numbers = readAllInt(new Tok(line(0)))\n    val target = line(1).trim.toInt\n    val result = solve(numbers, target)\n    println(result.mkString(\" \"))\n  }\n}\n",
+    "dart": "import 'dart:io';\n\nList<int> solve(List<int> numbers, int target) {\n  // Return the 1-indexed positions of the two numbers that add up to target.\n  return <int>[];\n}\n\nclass Tok {\n  final List<String> t;\n  int i = 0;\n  Tok(String s) : t = s.trim().split(RegExp(r'\\s+')).where((w) => w.isNotEmpty).toList();\n  String next() => i < t.length ? t[i++] : '0';\n  int get left => t.length - i;\n}\n\nList<int> readAllInt(Tok tk) => List.generate(tk.left, (_) => int.parse(tk.next()));\n\nvoid main() {\n  final lines = <String>[];\n  while (true) {\n    final l = stdin.readLineSync();\n    if (l == null) break;\n    lines.add(l);\n  }\n  String line(int i) => i < lines.length ? lines[i] : '';\n  final List<int> numbers = readAllInt(Tok(line(0)));\n  final int target = int.parse(line(1).trim());\n  final result = solve(numbers, target);\n  print(result.join(' '));\n}\n",
+    "bash": "#!/usr/bin/env bash\n\n# Return the 1-indexed positions of the two numbers that add up to target.\n# Arguments: $1 = numbers (space-separated), $2 = target. Echo the values, space-separated.\nsolve() {\n  local numbers=(${1})\n  local target=\"${2}\"\n  echo \"\"\n}\n\nlines=()\nwhile IFS= read -r l || [[ -n \"$l\" ]]; do lines+=(\"${l%$'\\r'}\"); done\nsolve \"${lines[0]}\" \"${lines[1]}\"\n"
+  },
+  "interviewer": {
+    "hints": [
+      "The array is sorted. If the sum is too small, which pointer should move?"
+    ],
+    "followUps": [
+      "What if the array weren't sorted? (Hash map, O(n) space.)"
+    ],
+    "expectedComplexity": {
+      "time": "O(n)",
+      "space": "O(1)"
+    }
+  },
+  "reference": {
+    "language": "python",
+    "code": "import bisect\nimport heapq\nimport math\nfrom collections import Counter, defaultdict, deque\nimport sys\nfrom typing import List\n\n\ndef solve(numbers: List[int], target: int) -> List[int]:\n    # Return the 1-indexed positions of the two numbers that add up to target.\n    i, j = 0, len(numbers) - 1\n    while i < j:\n        s = numbers[i] + numbers[j]\n        if s == target:\n            return [i + 1, j + 1]\n        if s < target:\n            i += 1\n        else:\n            j -= 1\n    return []\n\n\ndef main() -> None:\n    lines = sys.stdin.read().split(\"\\n\")\n\n    def line(i: int) -> str:\n        return lines[i].rstrip(\"\\r\") if i < len(lines) else \"\"\n\n    numbers = [int(x) for x in line(0).split()]\n    target = int(line(1).strip())\n    result = solve(numbers, target)\n    print(\" \".join(str(v) for v in result))\n\n\nif __name__ == \"__main__\":\n    main()\n"
+  }
+}
